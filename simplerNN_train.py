@@ -193,7 +193,11 @@ def train(config):
             real_label = torch.full([sr1.shape[0], 2], 1.0, dtype=torch.float, device=device,requires_grad=False)
 
 
-            difference1 = sr2 - translate(sr1,data["tr1"].float().to(device),mode='bilinear',padding_mode='border')
+            shift  = data["tr1"].float().to(device)
+            if(config["full_size"]==512):
+                shift = shift/2
+                
+            difference1 = sr2 - translate(sr1,shift,mode='bilinear',padding_mode='border')
 
 
             diff_loss = (difference1-D1)**2
@@ -255,7 +259,10 @@ def train(config):
                 sr1 = sr[:,0,:,:].unsqueeze(1)
                 sr2 = sr[:,1,:,:].unsqueeze(1)
 
-                difference1 = sr2 - translate(sr1,data["tr1"].float().to(device),mode='bilinear',padding_mode='border')
+                shift  = data["tr1"].float().to(device)
+                if(config["full_size"]==512):
+                    shift = shift/2
+                difference1 = sr2 - translate(sr1,shift,mode='bilinear',padding_mode='border')
  
             
                 gt_output = discriminator(torch.cat([HR1,HR2],1))

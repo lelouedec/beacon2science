@@ -6,9 +6,12 @@ from torch.nn import functional as F
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt 
-import b2s_dataset
+import Sequences_dataset
 from kornia.geometry.transform import translate
 from kornia.enhance.equalization import equalize_clahe
+from torch.utils.tensorboard import SummaryWriter
+import sys 
+import json
 
 
 
@@ -553,6 +556,10 @@ class Interpolator(nn.Module):
     
 
 if __name__ == "__main__":
+    with open(sys.argv[1]) as handle:
+        config = json.load(handle)
+
+
 
     device = torch.device("cpu")
     if(torch.backends.mps.is_available()):
@@ -569,9 +576,13 @@ if __name__ == "__main__":
 
     model.to(device=device, dtype=precision)
 
-    dataset = b2s_dataset.CombinedDataloader3(256,512,training=True,validation=False)
-    dataset_validation = b2s_dataset.CombinedDataloader3(256,512,training=False,validation=True)
-    minibacth = 2
+    dataset = Sequences_dataset.FinalDatasetSequences(512,"/gpfs/data/fs72241/lelouedecj/",training=True,validation=False)
+    dataset_validation = Sequences_dataset.FinalDatasetSequences(512,"/gpfs/data/fs72241/lelouedecj/",training=False,validation=True)
+
+    # dataset = Sequences_dataset.FinalDatasetSequences(512,"/Volumes/Data_drive/",training=True,validation=False)
+    # dataset_validation = Sequences_dataset.FinalDatasetSequences(512,"/Volumes/Data_drive/",training=False,validation=True)
+
+    minibacth = config["minibatch"]
     dataloader = torch.utils.data.DataLoader(
                                                 dataset,
                                                 batch_size=minibacth,
@@ -590,6 +601,9 @@ if __name__ == "__main__":
     
     pixel_looser = nn.L1Loss(reduction="mean")
     optimizer = optim.Adam(model.parameters(),1e-5)
+    writer = SummaryWriter()
+    best_validation = 20.0
+
 
     losses1 = []
     losses2 = []
@@ -602,33 +616,30 @@ if __name__ == "__main__":
         l2sv = []
 
         for data in dataloader:
-            LR1 = data["LR1"].to(device)
-            LR2 = data["LR2"].to(device)
-            HR1 = data["HR1"].to(device)
-            HR2 = data["HR2"].to(device)
-            M1  = data["M1"].to(device)
-            M2  = data["M2"].to(device)
+            S1 = data["IM1"].to(device)
+            S2 = data["IM2"].to(device)
+            S3 = data["IM3"].to(device)
+            S4 = data["IM4"].to(device)
+            
 
 
-            D1  = data["diff1"].to(device)
-            # D2  = data["diff2"].to(device)
-
-
-            dt1 = torch.ones((HR1.shape[0],1)).to(device) * 0.25
-            dt2 = torch.ones((HR1.shape[0],1)).to(device) * 0.75
+            dt1 = torch.ones((S1.shape[0],1)).to(device) * data["ratio1"].float().to(device)
+            dt2 = torch.ones((S1.shape[0],1)).to(device) * data["ratio2"].float().to(device)
 
             
 
             optimizer.zero_grad()
-            output25 = model(HR1,HR2,dt1)
-            loss1 = pixel_looser(output25,M1)
+            output25 = model(S1,S2,dt1)
+            loss1 = pixel_looser(output25,S3)
+            # if(config["diffloss"]):
+            #     loss1+=0.1
             loss1.backward()
             optimizer.step()
 
 
             optimizer.zero_grad()
-            output75 = model(HR1,HR2,dt2)
-            loss2 = pixel_looser(output75,M2)
+            output75 = model(S1,S2,dt2)
+            loss2 = pixel_looser(output75,S4)
             loss2.backward()
             optimizer.step()
 
@@ -640,51 +651,29 @@ if __name__ == "__main__":
         with torch.no_grad():
             for data in dataloader_validation:
 
-                LR1 = data["LR1"].to(device)
-                LR2 = data["LR2"].to(device)
-                HR1 = data["HR1"].to(device)
-                HR2 = data["HR2"].to(device)
-                M1  = data["M1"].to(device)
-                M2  = data["M2"].to(device)
+
+                S1 = data["IM1"].to(device)
+                S2 = data["IM2"].to(device)
+                S3 = data["IM3"].to(device)
+                S4 = data["IM4"].to(device)
+                
 
 
-                D1  = data["diff1"].to(device)
-                # D2  = data["diff2"].to(device)
+                dt1 = torch.ones((S1.shape[0],1)).to(device) * data["ratio1"].float().to(device)
+                dt2 = torch.ones((S1.shape[0],1)).to(device) * data["ratio2"].float().to(device)
+
+                
+
+                output25 = model(S1,S2,dt1)
+                loss1_v = pixel_looser(output25,S3)
 
 
-                dt1 = torch.ones((HR1.shape[0],1)).to(device) * 0.25
-                dt2 = torch.ones((HR1.shape[0],1)).to(device) * 0.75
-
-
-
-                output25 = model(HR1,HR2,dt1)
-                loss1_v = pixel_looser(output25,M1)
-
-
-                output75 = model(HR1,HR2,dt2)
-                loss2_v = pixel_looser(output75,M2)
+                output75 = model(S1,S2,dt2)
+                loss2_v = pixel_looser(output75,S4)
 
 
 
-                difference1 = output25 - translate(HR1,data["tr1"].float().to(device)/6,mode='bilinear',padding_mode='border')
-                difference1 = (difference1- difference1.min())/(difference1.max()-difference1.min())
-
-                difference2 = output75 - translate(output25,data["tr1"].float().to(device)/6,mode='bilinear',padding_mode='border')
-                difference2 = (difference2- difference2.min())/(difference2.max()-difference2.min())
-
-                difference3 = HR2 - translate(output75,data["tr1"].float().to(device)/6,mode='bilinear',padding_mode='border')
-                difference3 = (difference3- difference3.min())/(difference3.max()-difference3.min())
-
-
-                differencegt1 = M1 - translate(HR1,data["tr1"].float().to(device)/6,mode='bilinear',padding_mode='border')
-                differencegt1 = (differencegt1- differencegt1.min())/(differencegt1.max()-differencegt1.min())
-
-                differencegt2 = M2 - translate(M1,data["tr1"].float().to(device)/6,mode='bilinear',padding_mode='border')
-                differencegt2 = (differencegt2- differencegt2.min())/(differencegt2.max()-differencegt2.min())
-
-                differencegt3 = HR2 - translate(M2,data["tr1"].float().to(device)/6,mode='bilinear',padding_mode='border')
-                differencegt3 = (differencegt3- differencegt3.min())/(differencegt3.max()-differencegt3.min())
-
+            
                 l1sv.append(loss1_v.item())
                 l2sv.append(loss2_v.item())
 
@@ -693,28 +682,24 @@ if __name__ == "__main__":
             losses2_v.append(np.array(l2sv).mean())
 
 
-        fig,ax = plt.subplots(4,4)
-        ax[0][0].imshow(HR1[0][0].detach().cpu().numpy(),cmap='RdYlBu')
-        ax[0][1].imshow(np.abs(output25[0][0].detach().cpu().numpy()-M1[0][0].detach().cpu().numpy()),cmap = 'plasma')
-        ax[0][2].imshow(np.abs(output75[0][0].detach().cpu().numpy()-M2[0][0].detach().cpu().numpy()),cmap = 'plasma')
-        ax[0][3].imshow(HR2[0][0].detach().cpu().numpy(),cmap='RdYlBu')
+        writer.add_scalar('train 1', np.array(losses1)[-1], i)
+        writer.add_scalar('train 2', np.array(losses2)[-1], i)
+        writer.add_scalar('val 1', np.array(losses1_v)[-1], i)
+        writer.add_scalar('val 2', np.array(losses2_v)[-1], i)
+        
+        writer.add_image('s1', S1[0,0,:,:], i, dataformats='HW')
+        writer.add_image('s2', S2[0,0,:,:], i, dataformats='HW')
+        writer.add_image('s3', output25[0,0,:,:], i, dataformats='HW')
+        writer.add_image('s4', output75[0,0,:,:], i, dataformats='HW')
 
-        ax[1][0].imshow(HR1[0][0].detach().cpu().numpy(),cmap='RdYlBu')
-        ax[1][1].imshow(cv2.medianBlur(cv2.medianBlur(equalize_clahe(difference1,10.0,(10,10))[0][0].detach().cpu().numpy(),5),5),cmap='twilight')
-        ax[1][2].imshow(cv2.medianBlur(cv2.medianBlur(equalize_clahe(difference2,10.0,(10,10))[0][0].detach().cpu().numpy(),5),5),cmap='twilight')
-        ax[1][3].imshow(cv2.medianBlur(cv2.medianBlur(equalize_clahe(difference3,10.0,(10,10))[0][0].detach().cpu().numpy(),5),5),cmap='twilight')
+        writer.add_image('gts3', S3[0,0,:,:], i, dataformats='HW')
+        writer.add_image('gts4', S4[0,0,:,:], i, dataformats='HW')
+        
 
-        ax[2][0].imshow(HR1[0][0].detach().cpu().numpy(),cmap='RdYlBu')
-        ax[2][1].imshow(cv2.medianBlur(cv2.medianBlur(equalize_clahe(differencegt1,10.0,(10,10))[0][0].detach().cpu().numpy(),5),5),cmap='twilight')
-        ax[2][2].imshow(cv2.medianBlur(cv2.medianBlur(equalize_clahe(differencegt2,10.0,(10,10))[0][0].detach().cpu().numpy(),5),5),cmap='twilight')
-        ax[2][3].imshow(cv2.medianBlur(cv2.medianBlur(equalize_clahe(differencegt3,10.0,(10,10))[0][0].detach().cpu().numpy(),5),5),cmap='twilight')
 
-        ax[3][0].plot(losses1)
-        ax[3][1].plot(losses2)
-        ax[3][2].plot(losses1_v)
-        ax[3][3].plot(losses2_v)
-        plt.savefig("FILM_output/"+str(i)+".png")
-        # plt.show()
-        plt.close('all')
-        torch.save(model.module.state_dict(), "FILM_saved2.pth")
+        if(len(losses1_v)>1):
+            if(losses1_v[-1]<best_validation):
+                torch.save(model.module.state_dict(), "FILM_model1.pth")
+        else:
+            torch.save(model.module.state_dict(), "FILM_model1.pth")
     

@@ -1,0 +1,4 @@
+{
+    "minibatch":8,
+    "diffloss":true
+}
