@@ -76,7 +76,7 @@ def train(config):
     
     print("THIS WILL RUN ON DEVICE:", device)
 
-    model = unet2.ResUnet(2,config["full_size"])
+    model = unet2.ResUnet(2,full_size=config["full_size"])
     discriminator = ESRGAN.Discriminator(2,2,64)
 
     if(config["load_models"]==True):
