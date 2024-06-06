@@ -300,7 +300,7 @@ def train(config):
         else:
             torch.save(model.module.state_dict(), config["generator"])
             torch.save(discriminator.module.state_dict(),config["discriminator"])
-            torch.save(g_optimizer.state_dict(),config["gopti"])
+            torch.save(g_optimizer.state_dict(),config["goptim"])
             torch.save(d_optimizer.state_dict(),config["doptim"])
 
 
