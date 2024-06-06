@@ -22,7 +22,7 @@ class FinalDataset(Dataset):
        
        
         if(training or validation):
-            with open("dataset.json", "r") as final:
+            with open("dataset_bis.json", "r") as final:
                 self.data_json =  json.load(final)
         else:
             with open("dataset_test.json", "r") as final:

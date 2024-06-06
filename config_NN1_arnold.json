@@ -1,13 +1,13 @@
 {
-    "load_models":true,
+    "load_models":false,
     "generator":"gan_gen_l1.pth",
     "discriminator":"gan_disc_l1.pth",
     "lrgen": 1e-5,
     "lrdisc":1e-6,
-    "load_optim":true,
+    "load_optim":false,
     "goptim":"gopti_l1.pth",
     "doptim":"dopti_l1.pth",
-    "pxl_loss":"l1",
+    "pxl_loss":"L1",
     "pixel_weight":1,
     "adversarial_weight":0.005,
     "warmupiter":true,
@@ -19,5 +19,5 @@
     "endepoch":200,
     "diff_loss":true,
     "logdir":"runs/l1",
-    "data_path":"~/"
+    "data_path":"../"
 }
