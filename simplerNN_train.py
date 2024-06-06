@@ -94,14 +94,11 @@ def train(config):
     minibacth = config["minibacth"]
     full_size = config["full_size"]
 
-    dataset = b2s_dataset.FinalDataset(256,full_size,"/gpfs/data/fs72241/lelouedecj/",True,False)
-    dataset_validation = b2s_dataset.FinalDataset(256,full_size,"/gpfs/data/fs72241/lelouedecj/",False,True)
+    # dataset = b2s_dataset.FinalDataset(256,full_size,"/gpfs/data/fs72241/lelouedecj/",True,False)
+    # dataset_validation = b2s_dataset.FinalDataset(256,full_size,"/gpfs/data/fs72241/lelouedecj/",False,True)
 
-    # dataset = b2s_dataset.FinalDataset(256,full_size,"/Volumes/Data_drive/",True,False)
-    # dataset_validation = b2s_dataset.FinalDataset(256,full_size,"/Volumes/Data_drive/",False,True)
-
-    # dataset = b2s_dataset.CombinedDataloader3(256,512,"../finals_test",True,False)
-    # dataset_validation = b2s_dataset.CombinedDataloader3(256,512,"../finals_test",False,True)
+    dataset = b2s_dataset.FinalDataset(256,full_size,"/Volumes/Data_drive/",True,False)
+    dataset_validation = b2s_dataset.FinalDataset(256,full_size,"/Volumes/Data_drive/",False,True)
 
     dataloader = torch.utils.data.DataLoader(
                                                 dataset,
@@ -165,7 +162,7 @@ def train(config):
 
 
     cnt = 0
-    writer = SummaryWriter()
+    writer = SummaryWriter(log_dir=config["logdir"])
     for i in range(config["startepoch"],config["endepoch"]):
         g_loss  = 0.0
         a_loss  = 0.0
