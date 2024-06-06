@@ -18,5 +18,6 @@
     "startepoch":0,
     "endepoch":200,
     "diff_loss":true,
-    "logdir":"runs/mse"
+    "logdir":"runs/mse",
+    "data_path":"/gpfs/data/fs72241/lelouedecj/"
 }

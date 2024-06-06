@@ -94,11 +94,11 @@ def train(config):
     minibacth = config["minibacth"]
     full_size = config["full_size"]
 
-    # dataset = b2s_dataset.FinalDataset(256,full_size,"/gpfs/data/fs72241/lelouedecj/",True,False)
-    # dataset_validation = b2s_dataset.FinalDataset(256,full_size,"/gpfs/data/fs72241/lelouedecj/",False,True)
+    dataset = b2s_dataset.FinalDataset(256,full_size,config["data_path"],True,False)
+    dataset_validation = b2s_dataset.FinalDataset(256,full_size,config["data_path"],False,True)
 
-    dataset = b2s_dataset.FinalDataset(256,full_size,"/Volumes/Data_drive/",True,False)
-    dataset_validation = b2s_dataset.FinalDataset(256,full_size,"/Volumes/Data_drive/",False,True)
+    # dataset = b2s_dataset.FinalDataset(256,full_size,"/Volumes/Data_drive/",True,False)
+    # dataset_validation = b2s_dataset.FinalDataset(256,full_size,"/Volumes/Data_drive/",False,True)
 
     dataloader = torch.utils.data.DataLoader(
                                                 dataset,
@@ -196,7 +196,7 @@ def train(config):
             shift  = data["tr1"].float().to(device)
             if(config["full_size"]==512):
                 shift = shift/2
-                
+
             difference1 = sr2 - translate(sr1,shift,mode='bilinear',padding_mode='border')
 
 
