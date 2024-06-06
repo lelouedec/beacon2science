@@ -19,6 +19,9 @@ import kornia
 from kornia.enhance.equalization import equalize_clahe
 import matplotlib.cm as cm
 import unet2
+import json
+import sys 
+
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -63,7 +66,7 @@ def train_discriminator(discriminator,data,sr,adversarial_looser,device,target):
 
 
 
-def train():
+def train(config):
     device = torch.device("cpu")
     if(torch.backends.mps.is_available()):
         device = torch.device("mps")
@@ -73,15 +76,12 @@ def train():
     
     print("THIS WILL RUN ON DEVICE:", device)
 
-    # sudo rmmod nvidia_uvm
-    # sudo modprobe nvidia_uvm
-
-
     model = unet2.ResUnet(2)
     discriminator = ESRGAN.Discriminator(2,2,64)
 
-    model.load_state_dict(torch.load("gan_gen.pth"))
-    discriminator.load_state_dict(torch.load("gan_disc.pth"))
+    if(config["load_models"]==True):
+        model.load_state_dict(torch.load(config["generator"],map_location=torch.device('cpu')))
+        discriminator.load_state_dict(torch.load(config["discriminator"],map_location=torch.device('cpu')))
 
 
     if(torch.cuda.device_count() >1):
@@ -91,8 +91,8 @@ def train():
     model.to(device)
     discriminator.to(device)
 
-    minibacth = 8
-    full_size = 1024
+    minibacth = config["minibacth"]
+    full_size = config["full_size"]
 
     dataset = b2s_dataset.FinalDataset(256,full_size,"/gpfs/data/fs72241/lelouedecj/",True,False)
     dataset_validation = b2s_dataset.FinalDataset(256,full_size,"/gpfs/data/fs72241/lelouedecj/",False,True)
@@ -121,29 +121,34 @@ def train():
                                             )
     
 
-    g_optimizer = optim.Adam(model.parameters(),1e-5)
-    d_optimizer = optim.Adam(discriminator.parameters(),1e-6)
+    g_optimizer = optim.Adam(model.parameters(),config["lrgen"])
+    d_optimizer = optim.Adam(discriminator.parameters(),config["lrdisc"])
 
-    g_optimizer.load_state_dict(torch.load("gopti.pth"))
-    d_optimizer.load_state_dict(torch.load("dopti.pth"))
+    if(config["load_optim"]):
+        g_optimizer.load_state_dict(torch.load(config["goptim"],map_location=torch.device('cpu')))
+        d_optimizer.load_state_dict(torch.load(config["doptim"],map_location=torch.device('cpu')))
     
-    # g_scheduler = optim.lr_scheduler.StepLR(g_optimizer, step_size=60, gamma=0.1)
-    # d_scheduler = optim.lr_scheduler.StepLR(d_optimizer, step_size=60, gamma=0.5)
+    g_scheduler = optim.lr_scheduler.ReduceLROnPlateau(g_optimizer, patience=5)
+    d_scheduler = optim.lr_scheduler.ReduceLROnPlateau(d_optimizer, patience=5)
 
 
 
     adversarial_looser = nn.BCEWithLogitsLoss()
-    pixel_looser  = kornia.losses.MS_SSIMLoss(reduction='none').to(device) #nn.MSELoss(reduction="mean")
+    if(config["pxl_loss"]=="SSIM"):
+        pixel_looser  = kornia.losses.MS_SSIMLoss(reduction='none').to(device)
+    elif(config["pxl_loss"]=="MSE"):
+        pixel_looser = nn.MSELoss(reduction="mean")
+    elif(config["pxl_loss"]=="L1"):
+        pixel_looser = nn.L1Loss(reduction="mean")
    
 
-    content_looser = ESRGAN.ContentLoss("vgg19",False,1,None,["features.34"],[0.485, 0.456, 0.406],[0.229, 0.224, 0.225]).to(device)
+    # content_looser = ESRGAN.ContentLoss("vgg19",False,1,None,["features.34"],[0.485, 0.456, 0.406],[0.229, 0.224, 0.225]).to(device)
 
-    content_weight = 1
-    pixel_weight = 1
-    adversarial_weight = 0.005
-    diff_weight = 20
-    tv_weight = 10
-    warmupiter = int(dataset.__len__()*4/minibacth)
+    pixel_weight = config["pixel_weight"]
+    adversarial_weight = config["adversarial_weight"]
+    diff_weight = config["diff_weight"]
+    if(config["warmupiter"]):
+        warmupiter = int(dataset.__len__()*4/minibacth)
 
 
     g_losses  = []
@@ -155,11 +160,13 @@ def train():
     g_losses_validation  = []
     a_losses_validation  = []
 
-    best_validation = 5.154
+    best_validation = config["best_validation"]
+
+
 
     cnt = 0
     writer = SummaryWriter()
-    for i in range(50,200):
+    for i in range(config["startepoch"],config["endepoch"]):
         g_loss  = 0.0
         a_loss  = 0.0
         a_loss2 = 0.0
@@ -174,7 +181,6 @@ def train():
             LR2 = data["LR2"].to(device)
             HR1 = data["HR1"].to(device)
             HR2 = data["HR2"].to(device)
-            distances = data["distances"].to(device)
 
 
             D1  = data["diff1"].to(device)
@@ -195,8 +201,10 @@ def train():
 
             diff_loss = (difference1-D1)**2
 
-                        
-            loss = diff_weight*(distances* diff_loss).mean() + pixel_weight*(distances*(0.5*pixel_looser(sr1.float(),HR1)+0.5*pixel_looser(sr2.float(),HR2))).mean()
+            
+            loss =  pixel_weight*((0.5*pixel_looser(sr1.float(),HR1)+0.5*pixel_looser(sr2.float(),HR2))).mean()
+            if(config["diff_loss"]):
+                loss = loss + diff_weight*(diff_loss).mean() 
 
              
             if(cnt>warmupiter):
@@ -242,7 +250,6 @@ def train():
                 LR2 = data["LR2"].to(device)
                 HR1 = data["HR1"].to(device)
                 HR2 = data["HR2"].to(device)
-                distances = data["distances"].to(device)
 
 
                 D1  = data["diff1"].to(device)
@@ -252,10 +259,7 @@ def train():
                 sr2 = sr[:,1,:,:].unsqueeze(1)
 
                 difference1 = sr2 - translate(sr1,data["tr1"].float().to(device),mode='bilinear',padding_mode='border')
-                difference2 = sr1 - translate(sr2,-1*data["tr1"].float().to(device),mode='bilinear',padding_mode='border')
-                
-                                
-                
+ 
             
                 gt_output = discriminator(torch.cat([HR1,HR2],1))
                 sr_output = discriminator(sr)
@@ -267,7 +271,10 @@ def train():
 
                 diff_loss = (difference1-D1)**2
                         
-                loss = diff_weight*(distances* diff_loss).mean() + pixel_weight*(distances*(0.5*pixel_looser(sr1.float(),HR1)+0.5*pixel_looser(sr2.float(),HR2))).mean()
+
+                loss =  pixel_weight*((0.5*pixel_looser(sr1.float(),HR1)+0.5*pixel_looser(sr2.float(),HR2))).mean()
+                if(config["diff_loss"]):
+                    loss = loss + diff_weight*(diff_loss).mean() 
 
                
                 g_loss_validation += loss.item()
@@ -277,12 +284,9 @@ def train():
             g_losses_validation.append(g_loss_validation/dataset_validation.__len__())
             a_losses_validation.append(a_loss_validation/dataset_validation.__len__())
 
-        # g_scheduler.step()
-        # d_scheduler.step()
-        # print(g_losses[-1],g_losses_validation[-1])
+        g_scheduler.step(g_loss_validation/dataset_validation.__len__())
+        d_scheduler.step(g_loss_validation/dataset_validation.__len__())
         
-        outpt  = sr1[0,0,:,:].clone().detach().cpu().numpy()
-        outpt2 = sr2[0,0,:,:].clone().detach().cpu().numpy()
 
 
         writer.add_scalar('gLoss/train', np.array(g_losses)[-1], i)
@@ -290,53 +294,34 @@ def train():
         writer.add_scalar('aLoss/train', np.array(a_losses)[-1], i)
         writer.add_scalar('aLoss/test',  np.array(a_losses_validation)[-1], i)
 
-        writer.add_image('fake img1', sr1[0,0,:,:], i, dataformats='HW')
-        writer.add_image('fake img2', sr1[0,0,:,:], i, dataformats='HW')
+        writer.add_image('fake/img1', sr1[0,0,:,:], i, dataformats='HW')
+        writer.add_image('fake/img2', sr1[0,0,:,:], i, dataformats='HW')
 
-        writer.add_image('HR img1', HR1[0,0,:,:], i, dataformats='HW')
-        writer.add_image('HR img2', HR2[0,0,:,:], i, dataformats='HW')
+        writer.add_image('HR/img1', HR1[0,0,:,:], i, dataformats='HW')
+        writer.add_image('HR/img2', HR2[0,0,:,:], i, dataformats='HW')
 
-        writer.add_image('LR img1', LR1[0,0,:,:], i, dataformats='HW')
-        writer.add_image('LR img2', LR2[0,0,:,:], i, dataformats='HW')
-
-
-
-        writer.add_image('diff  HR img1', data["diff2"][0][0], i, dataformats='HW')
-        writer.add_image('diff  HR img2', data["diff1"][0][0], i, dataformats='HW')
-
-        writer.add_image('diff fake img1', difference2[0][0], i, dataformats='HW')
-        writer.add_image('diff fake img2', difference1[0][0], i, dataformats='HW')
-
-        #writer.add_image('diff LR img1', data["diff2_b"][0][0], i, dataformats='HW')
-        #writer.add_image('diff LR img2', data["diff1_b"][0][0], i, dataformats='HW')
+        writer.add_image('LR/img1', LR1[0,0,:,:], i, dataformats='HW')
+        writer.add_image('LR/img2', LR2[0,0,:,:], i, dataformats='HW')
 
 
         if(len(g_losses_validation)>1):
             if(g_losses_validation[-1]<best_validation):
-                torch.save(model.module.state_dict(), "gan_gen.pth")
-                torch.save(discriminator.module.state_dict(),"gan_disc.pth")
-                torch.save(g_optimizer.state_dict(),"gopti.pth")
-                torch.save(d_optimizer.state_dict(),"dopti.pth")
+                torch.save(model.module.state_dict(), config["generator"])
+                torch.save(discriminator.module.state_dict(),config["discriminator"])
+                torch.save(g_optimizer.state_dict(),config["goptim"])
+                torch.save(d_optimizer.state_dict(),config["doptim"])
                 best_validation = g_losses_validation[-1]
         else:
-            torch.save(model.module.state_dict(), "gan_gen.pth")
-            torch.save(discriminator.module.state_dict(),"gan_disc.pth")
-            torch.save(g_optimizer.state_dict(),"gopti.pth")
-            torch.save(d_optimizer.state_dict(),"dopti.pth")
-
-def PSNR_RMSE(original, compressed):
-    mse = np.mean((original - compressed) ** 2)
-    if(mse == 0):  # MSE is zero means no noise is present in the signal .
-                  # Therefore PSNR have no importance.
-        return 100
-    max_pixel = 255.0
-    psnr = 20 * log10(max_pixel / sqrt(mse))
-    return psnr, np.sqrt(mse)
-
+            torch.save(model.module.state_dict(), config["generator"])
+            torch.save(discriminator.module.state_dict(),config["discriminator"])
+            torch.save(g_optimizer.state_dict(),config["gopti"])
+            torch.save(d_optimizer.state_dict(),config["doptim"])
 
 
 
 if __name__ == "__main__":
-    train()
+    with open(sys.argv[1]) as handle:
+        config = json.load(handle)
+    train(config)
 
 
