@@ -454,6 +454,7 @@ class Discriminator(nn.Module):
             in_channels: int,
             out_channels: int,
             channels: int,
+            full_size:int,
     ) -> None:
         super(Discriminator, self).__init__()
         self.features = nn.Sequential(
@@ -484,9 +485,12 @@ class Discriminator(nn.Module):
             nn.Conv2d(int(8 * channels), int(8 * channels), (4, 4), (2, 2), (1, 1), bias=False),
             nn.LeakyReLU(0.2, True)
         )
-
+        if(full_size==1024):
+            feats = 524288
+        else:
+            feats = 131072
         self.classifier = nn.Sequential(
-            nn.Linear(524288, 100),
+            nn.Linear(feats, 100),
             nn.LeakyReLU(0.2, True),
             nn.Linear(100, out_channels)
         )
