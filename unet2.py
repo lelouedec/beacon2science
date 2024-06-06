@@ -58,7 +58,7 @@ class Squeeze_Excite_Block(nn.Module):
 
 
 class ResUnet(nn.Module):
-    def __init__(self, channel, filters=[64, 128, 256, 512]):
+    def __init__(self, channel, filters=[64, 128, 256, 512],full_size=1024):
         super(ResUnet, self).__init__()
 
         self.input_layer = nn.Sequential(
@@ -70,6 +70,7 @@ class ResUnet(nn.Module):
         self.input_skip = nn.Sequential(
             nn.Conv2d(channel, filters[0], kernel_size=3, padding=1)
         )
+        self.full_size = full_size
 
         self.residual_conv_1   = ResidualConv(filters[0], filters[0], 1, 1) #input_dim, output_dim, stride, padding
         self.residual_conv_1_2 = ResidualConv(filters[0], filters[1], 1, 1)#(128,256,256)
@@ -98,14 +99,12 @@ class ResUnet(nn.Module):
         self.upsample_4 = Upsample(filters[1], filters[1], 2, 2)
         self.up_residual_conv4 = ResidualConv(filters[1] + filters[1], filters[0], 1, 1)
         
-
-        scaling_factor = 2
+        if(self.full_size==1024):
+            scaling_factor=4
+        else:
+            scaling_factor = 2
         #  Upscaling is done by sub-pixel convolution, with each such block upscaling by a factor of 2
         n_subpixel_convolution_blocks = int(math.log2(scaling_factor))
-        self.subpixel_convolutional_blocks2 = nn.Sequential(
-        *[SubPixelConvolutionalBlock(kernel_size=3, n_channels=filters[0], scaling_factor=2) for i
-            in range(n_subpixel_convolution_blocks)]
-        )
         self.subpixel_convolutional_blocks = nn.Sequential(
         *[SubPixelConvolutionalBlock(kernel_size=3, n_channels=filters[0], scaling_factor=2) for i
             in range(n_subpixel_convolution_blocks)])
@@ -182,8 +181,8 @@ class ResUnet(nn.Module):
         x11 = self.up_residual_conv4(x11) ## filters [0]
         # print("x11: ",x11.shape)
 
-
-
-        output = self.output_layer( self.subpixel_convolutional_blocks2(self.subpixel_convolutional_blocks(x11)))
+        x11 = self.subpixel_convolutional_blocks(x11)
+       
+        output = self.output_layer(x11)
 
         return output
