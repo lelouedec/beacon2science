@@ -12,7 +12,7 @@
     "adversarial_weight":0.005,
     "warmupiter":true,
     "diff_weight":20,
-    "minibacth": 8,
+    "minibacth": 6,
     "full_size": 512,
     "best_validation":10,
     "startepoch":0,
