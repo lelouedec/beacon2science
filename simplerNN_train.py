@@ -270,8 +270,8 @@ def train(config):
             g_losses_validation.append(g_loss_validation/dataset_validation.__len__())
             a_losses_validation.append(a_loss_validation/dataset_validation.__len__())
 
-        g_scheduler.step(g_loss_validation/dataset_validation.__len__())
-        d_scheduler.step(g_loss_validation/dataset_validation.__len__())
+        #g_scheduler.step(g_loss_validation/dataset_validation.__len__())
+        #d_scheduler.step(g_loss_validation/dataset_validation.__len__())
         
 
 
