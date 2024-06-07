@@ -4,7 +4,7 @@
     "discriminator":"gan_disc_mse.pth",
     "lrgen": 1e-5,
     "lrdisc":1e-6,
-    "load_optim":true,
+    "load_optim":false,
     "goptim":"gopti_mse.pth",
     "doptim":"dopti_mse.pth",
     "pxl_loss":"mse",
@@ -18,6 +18,6 @@
     "startepoch":0,
     "endepoch":200,
     "diff_loss":true,
-    "logdir":"runs/mse",
-    "data_path":"/gpfs/data/fs72241/lelouedecj/"
+    "logdir":"runs/l1",
+    "data_path":"../"
 }
