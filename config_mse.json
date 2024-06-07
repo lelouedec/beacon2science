@@ -18,6 +18,6 @@
     "startepoch":0,
     "endepoch":200,
     "diff_loss":true,
-    "logdir":"runs/l1",
+    "logdir":"runs/mse",
     "data_path":"../"
 }
