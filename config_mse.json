@@ -7,7 +7,7 @@
     "load_optim":false,
     "goptim":"gopti_mse.pth",
     "doptim":"dopti_mse.pth",
-    "pxl_loss":"mse",
+    "pxl_loss":"MSE",
     "pixel_weight":1,
     "adversarial_weight":0.005,
     "warmupiter":true,
