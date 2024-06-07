@@ -1,3 +1,23 @@
 {
-
+    "load_models":false,
+    "generator":"gan_gen_ssim.pth",
+    "discriminator":"gan_disc_ssim.pth",
+    "lrgen": 1e-5,
+    "lrdisc":1e-6,
+    "load_optim":false,
+    "goptim":"gopti_ssim.pth",
+    "doptim":"dopti_ssim.pth",
+    "pxl_loss":"SSIM",
+    "pixel_weight":1,
+    "adversarial_weight":0.005,
+    "warmupiter":true,
+    "diff_weight":20,
+    "minibacth": 8,
+    "full_size": 512,
+    "best_validation":10,
+    "startepoch":0,
+    "endepoch":200,
+    "diff_loss":true,
+    "logdir":"runs/ssim",
+    "data_path":"../"
 }
