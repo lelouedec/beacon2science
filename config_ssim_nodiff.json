@@ -18,6 +18,6 @@
     "startepoch":0,
     "endepoch":200,
     "diff_loss":false,
-    "logdir":"runs/ssim",
+    "logdir":"runs/ssim_no_diff",
     "data_path":"../"
 }
