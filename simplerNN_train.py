@@ -281,7 +281,7 @@ def train(config):
         writer.add_scalar('aLoss/test',  np.array(a_losses_validation)[-1], i)
 
         writer.add_image('fake/img1', sr1[0,0,:,:], i, dataformats='HW')
-        writer.add_image('fake/img2', sr1[0,0,:,:], i, dataformats='HW')
+        writer.add_image('fake/img2', sr2[0,0,:,:], i, dataformats='HW')
 
         writer.add_image('HR/img1', HR1[0,0,:,:], i, dataformats='HW')
         writer.add_image('HR/img2', HR2[0,0,:,:], i, dataformats='HW')
