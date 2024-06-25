@@ -576,12 +576,17 @@ if __name__ == "__main__":
 
     model.to(device=device, dtype=precision)
 
-    dataset = Sequences_dataset.FinalDatasetSequences(512,"/gpfs/data/fs72241/lelouedecj/",training=True,validation=False)
-    dataset_validation = Sequences_dataset.FinalDatasetSequences(512,"/gpfs/data/fs72241/lelouedecj/",training=False,validation=True)
+    # dataset = Sequences_dataset.FinalDatasetSequences(512,"/gpfs/data/fs72241/lelouedecj/",training=True,validation=False)
+    # dataset_validation = Sequences_dataset.FinalDatasetSequences(512,"/gpfs/data/fs72241/lelouedecj/",training=False,validation=True)
+
+
+    dataset = Sequences_dataset.FinalDatasetSequences(512,"../",training=True,validation=False)
+    dataset_validation = Sequences_dataset.FinalDatasetSequences(512,"../",training=False,validation=True)
+
 
     # dataset = Sequences_dataset.FinalDatasetSequences(512,"/Volumes/Data_drive/",training=True,validation=False)
     # dataset_validation = Sequences_dataset.FinalDatasetSequences(512,"/Volumes/Data_drive/",training=False,validation=True)
-
+ 
     minibacth = config["minibatch"]
     dataloader = torch.utils.data.DataLoader(
                                                 dataset,
