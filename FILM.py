@@ -631,6 +631,8 @@ if __name__ == "__main__":
             dt1 = torch.ones((S1.shape[0],1)).to(device) * data["ratio1"].float().to(device)
             dt2 = torch.ones((S1.shape[0],1)).to(device) * data["ratio2"].float().to(device)
 
+            print(dt1.shape)
+
             
 
             optimizer.zero_grad()
@@ -705,6 +707,7 @@ if __name__ == "__main__":
         if(len(losses1_v)>1):
             if(losses1_v[-1]<best_validation):
                 torch.save(model.module.state_dict(), "FILM_model1.pth")
+                best_validation = losses1_v[-1]
         else:
             torch.save(model.module.state_dict(), "FILM_model1.pth")
     
