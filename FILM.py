@@ -631,12 +631,11 @@ if __name__ == "__main__":
             dt1 = torch.ones((S1.shape[0])).to(device) * data["ratio1"].float().to(device)
             dt2 = torch.ones((S1.shape[0])).to(device) * data["ratio2"].float().to(device)
 
-            print(dt1.shape)
-
+        
             
 
             optimizer.zero_grad()
-            output25 = model(S1,S2,dt1)
+            output25 = model(S1,S2,dt1.unsqueeze(1))
             loss1 = pixel_looser(output25,S3)
             # if(config["diffloss"]):
             #     loss1+=0.1
@@ -645,7 +644,7 @@ if __name__ == "__main__":
 
 
             optimizer.zero_grad()
-            output75 = model(S1,S2,dt2)
+            output75 = model(S1,S2,dt2.unsqueeze(1))
             loss2 = pixel_looser(output75,S4)
             loss2.backward()
             optimizer.step()
