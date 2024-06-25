@@ -58,7 +58,7 @@ class FinalDataset(Dataset):
             distances = torch.flip(distances, [1])
 
     
-        self.clahe_b = cv2.createCLAHE(clipLimit=10,tileGridSize=(4,4))
+        self.clahe_b = cv2.createCLAHE(clipLimit=10,tileGridSize=(10,10))
         self.clahe_s = cv2.createCLAHE(clipLimit=10,tileGridSize=(10,10))
        
 
