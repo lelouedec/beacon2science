@@ -665,16 +665,16 @@ if __name__ == "__main__":
                 
 
 
-                dt1 = torch.ones((S1.shape[0],1)).to(device) * data["ratio1"].float().to(device)
-                dt2 = torch.ones((S1.shape[0],1)).to(device) * data["ratio2"].float().to(device)
+                dt1 = torch.ones((S1.shape[0])).to(device) * data["ratio1"].float().to(device)
+                dt2 = torch.ones((S1.shape[0])).to(device) * data["ratio2"].float().to(device)
 
                 
 
-                output25 = model(S1,S2,dt1)
+                output25 = model(S1,S2,dt1.unsqueeze(1))
                 loss1_v = pixel_looser(output25,S3)
 
 
-                output75 = model(S1,S2,dt2)
+                output75 = model(S1,S2,dt2.unsqueeze(1))
                 loss2_v = pixel_looser(output75,S4)
 
 
