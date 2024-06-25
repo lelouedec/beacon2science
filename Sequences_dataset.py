@@ -75,7 +75,6 @@ class FinalDatasetSequences(Dataset):
         ratio2 = diff_time3/diff_time
 
         shift_arr = np.array(self.data_json[index]["shift"])
-        print(ratio1,ratio2)
         diff1   = np.float32(s3-shift(s1,shift_arr*ratio1, order=2,mode='nearest',prefilter=False))
         diff2   = np.float32(s4-shift(s3,shift_arr*ratio1, order=2,mode='nearest',prefilter=False))
         diff3   = np.float32(s2-shift(s4,shift_arr*ratio1, order=2,mode='nearest',prefilter=False))
