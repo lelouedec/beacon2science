@@ -17,7 +17,7 @@
     "best_validation":5,
     "startepoch":0,
     "endepoch":200,
-    "diff_loss":true,
+    "diff_loss":false,
     "logdir":"runs/ssim",
     "data_path":"../"
 }
