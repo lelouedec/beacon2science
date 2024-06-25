@@ -1,4 +1,6 @@
 {
     "minibatch":8,
-    "diffloss":true
+    "diffloss":true,
+    "res":512,
+    "cluster":true
 }

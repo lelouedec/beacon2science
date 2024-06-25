@@ -562,9 +562,9 @@ if __name__ == "__main__":
 
 
     device = torch.device("cpu")
-    if(torch.backends.mps.is_available()):
-        device = torch.device("mps")
-    elif(torch.cuda.is_available()):
+    # if(torch.backends.mps.is_available()):
+    #     device = torch.device("mps")
+    if(torch.cuda.is_available()):
         device = torch.device("cuda")
 
     precision = torch.float32
@@ -576,16 +576,18 @@ if __name__ == "__main__":
 
     model.to(device=device, dtype=precision)
 
-    # dataset = Sequences_dataset.FinalDatasetSequences(512,"/gpfs/data/fs72241/lelouedecj/",training=True,validation=False)
-    # dataset_validation = Sequences_dataset.FinalDatasetSequences(512,"/gpfs/data/fs72241/lelouedecj/",training=False,validation=True)
+    if(config["minibatch"]):
+        dataset = Sequences_dataset.FinalDatasetSequences(config["res"],"/gpfs/data/fs72241/lelouedecj/",training=True,validation=False)
+        dataset_validation = Sequences_dataset.FinalDatasetSequences(config["res"],"/gpfs/data/fs72241/lelouedecj/",training=False,validation=True)
+    else:
+        dataset = Sequences_dataset.FinalDatasetSequences(config["res"],"/Volumes/Data_drive/",training=True,validation=False)
+        dataset_validation = Sequences_dataset.FinalDatasetSequences(config["res"],"/Volumes/Data_drive/",training=False,validation=True)
+
+    # dataset = Sequences_dataset.FinalDatasetSequences(512,"../",training=True,validation=False)
+    # dataset_validation = Sequences_dataset.FinalDatasetSequences(512,"../",training=False,validation=True)
 
 
-    dataset = Sequences_dataset.FinalDatasetSequences(512,"../",training=True,validation=False)
-    dataset_validation = Sequences_dataset.FinalDatasetSequences(512,"../",training=False,validation=True)
-
-
-    # dataset = Sequences_dataset.FinalDatasetSequences(512,"/Volumes/Data_drive/",training=True,validation=False)
-    # dataset_validation = Sequences_dataset.FinalDatasetSequences(512,"/Volumes/Data_drive/",training=False,validation=True)
+    
  
     minibacth = config["minibatch"]
     dataloader = torch.utils.data.DataLoader(
@@ -637,8 +639,11 @@ if __name__ == "__main__":
             optimizer.zero_grad()
             output25 = model(S1,S2,dt1.unsqueeze(1))
             loss1 = pixel_looser(output25,S3)
-            # if(config["diffloss"]):
-            #     loss1+=0.1
+
+            if(config["diffloss"]):
+                difference1 = output25.float() - translate(data["IM1"].to(device).float(),data["shift"].to(device).float(),mode='bilinear',padding_mode='border').float()
+                loss1+= ((difference1-data["diff1"])**2).mean()
+
             loss1.backward()
             optimizer.step()
 
@@ -646,6 +651,10 @@ if __name__ == "__main__":
             optimizer.zero_grad()
             output75 = model(S1,S2,dt2.unsqueeze(1))
             loss2 = pixel_looser(output75,S4)
+            if(config["diffloss"]):
+                difference2 = data["IM2"].to(device) - translate(output75.float(),data["shift"].to(device).float(),mode='bilinear',padding_mode='border').float()
+                loss2+= ((difference2-data["diff3"])**2).mean()
+
             loss2.backward()
             optimizer.step()
 
@@ -677,7 +686,12 @@ if __name__ == "__main__":
                 output75 = model(S1,S2,dt2.unsqueeze(1))
                 loss2_v = pixel_looser(output75,S4)
 
+                if(config["diffloss"]):
+                    difference1 = output25.float() - translate(data["IM1"].to(device).float(),data["shift"].to(device).float(),mode='bilinear',padding_mode='border').float()
+                    loss1_v+= ((difference1-data["diff1"])**2).mean()
 
+                    difference2 = data["IM2"].to(device) - translate(output75.float(),data["shift"].to(device).float(),mode='bilinear',padding_mode='border').float()
+                    loss2_v+= ((difference2-data["diff3"])**2).mean()
 
             
                 l1sv.append(loss1_v.item())
