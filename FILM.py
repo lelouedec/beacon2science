@@ -628,8 +628,8 @@ if __name__ == "__main__":
             
 
 
-            dt1 = torch.ones((S1.shape[0],1)).to(device) * data["ratio1"].float().to(device)
-            dt2 = torch.ones((S1.shape[0],1)).to(device) * data["ratio2"].float().to(device)
+            dt1 = torch.ones((S1.shape[0])).to(device) * data["ratio1"].float().to(device)
+            dt2 = torch.ones((S1.shape[0])).to(device) * data["ratio2"].float().to(device)
 
             print(dt1.shape)
 
