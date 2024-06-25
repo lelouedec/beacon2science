@@ -20,7 +20,7 @@ class FinalDatasetSequences(Dataset):
         self.path = path
        
        
-        with open("Sequences_dataset.json", "r") as final:
+        with open("sequences_dataset.json", "r") as final:
             self.data_json =  json.load(final)
        
         
