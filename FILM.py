@@ -719,8 +719,8 @@ if __name__ == "__main__":
 
         if(len(losses1_v)>1):
             if(losses1_v[-1]+losses2_v[-1]<best_validation):
-                torch.save(model.module.state_dict(), "FILM_model2.pth")
+                torch.save(model.module.state_dict(), config["model_name"])
                 best_validation = losses1_v[-1]+losses2_v[-1]
         else:
-            torch.save(model.module.state_dict(), "FILM_model2.pth")
+            torch.save(model.module.state_dict(), config["model_name"])
     
