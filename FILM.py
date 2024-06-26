@@ -642,7 +642,7 @@ if __name__ == "__main__":
 
             if(config["diffloss"]):
                 difference1 = output25.float() - translate(data["IM1"].to(device).float(),data["shift"].to(device).float(),mode='bilinear',padding_mode='border').float()
-                loss1+= ((difference1-data["diff1"])**2).mean()
+                loss1+= ((difference1-data["diff1"].to(device))**2).mean()
 
             loss1.backward()
             optimizer.step()
@@ -653,7 +653,7 @@ if __name__ == "__main__":
             loss2 = pixel_looser(output75,S4)
             if(config["diffloss"]):
                 difference2 = data["IM2"].to(device) - translate(output75.float(),data["shift"].to(device).float(),mode='bilinear',padding_mode='border').float()
-                loss2+= ((difference2-data["diff3"])**2).mean()
+                loss2+= ((difference2-data["diff3"].to(device))**2).mean()
 
             loss2.backward()
             optimizer.step()
@@ -688,10 +688,10 @@ if __name__ == "__main__":
 
                 if(config["diffloss"]):
                     difference1 = output25.float() - translate(data["IM1"].to(device).float(),data["shift"].to(device).float(),mode='bilinear',padding_mode='border').float()
-                    loss1_v+= ((difference1-data["diff1"])**2).mean()
+                    loss1_v+= ((difference1-data["diff1"].to(device))**2).mean()
 
                     difference2 = data["IM2"].to(device) - translate(output75.float(),data["shift"].to(device).float(),mode='bilinear',padding_mode='border').float()
-                    loss2_v+= ((difference2-data["diff3"])**2).mean()
+                    loss2_v+= ((difference2-data["diff3"].to(device))**2).mean()
 
             
                 l1sv.append(loss1_v.item())
