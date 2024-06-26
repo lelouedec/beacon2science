@@ -571,6 +571,9 @@ if __name__ == "__main__":
 
 
     model = Interpolator()
+    if(config["restart"]):
+        model.load(torch.load_state_dict(config["model_name"],map_location=torch.device('cpu')))
+
     if(torch.cuda.device_count() >1):
         model = torch.nn.DataParallel(model)
 
@@ -580,11 +583,11 @@ if __name__ == "__main__":
         dataset = Sequences_dataset.FinalDatasetSequences(config["res"],"/gpfs/data/fs72241/lelouedecj/",training=True,validation=False)
         dataset_validation = Sequences_dataset.FinalDatasetSequences(config["res"],"/gpfs/data/fs72241/lelouedecj/",training=False,validation=True)
     else:
-        dataset = Sequences_dataset.FinalDatasetSequences(config["res"],"/Volumes/Data_drive/",training=True,validation=False)
-        dataset_validation = Sequences_dataset.FinalDatasetSequences(config["res"],"/Volumes/Data_drive/",training=False,validation=True)
+        # dataset = Sequences_dataset.FinalDatasetSequences(config["res"],"/Volumes/Data_drive/",training=True,validation=False)
+        # dataset_validation = Sequences_dataset.FinalDatasetSequences(config["res"],"/Volumes/Data_drive/",training=False,validation=True)
 
-    # dataset = Sequences_dataset.FinalDatasetSequences(512,"../",training=True,validation=False)
-    # dataset_validation = Sequences_dataset.FinalDatasetSequences(512,"../",training=False,validation=True)
+        dataset = Sequences_dataset.FinalDatasetSequences(512,"../",training=True,validation=False)
+        dataset_validation = Sequences_dataset.FinalDatasetSequences(512,"../",training=False,validation=True)
 
 
     

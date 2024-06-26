@@ -2,6 +2,7 @@
     "minibatch":8,
     "diffloss":false,
     "res":512,
-    "cluster":true,
-    "model_name":"Film_model1.pth"
+    "cluster":false,
+    "model_name":"Film_model1.pth",
+    "restart":true
 }
