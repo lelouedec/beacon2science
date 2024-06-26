@@ -108,8 +108,8 @@ class FinalDatasetSequences(Dataset):
                 "diff1"   : torch.tensor(diff1).unsqueeze(0).float(),
                 "diff2"   : torch.tensor(diff2).unsqueeze(0).float(),
                 "diff3"   : torch.tensor(diff3).unsqueeze(0).float(),
-                "diff0"   : torch.tensor(diff0).unsqueeze(0).float()
-
+                "diff0"   : torch.tensor(diff0).unsqueeze(0).float(),
+                "shift"   :   tr1*ratio1
                 }
     
 
