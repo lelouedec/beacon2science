@@ -579,7 +579,7 @@ if __name__ == "__main__":
 
     model.to(device=device, dtype=precision)
 
-    if(config["minibatch"]):
+    if(config["cluster"]):
         dataset = Sequences_dataset.FinalDatasetSequences(config["res"],"/gpfs/data/fs72241/lelouedecj/",training=True,validation=False)
         dataset_validation = Sequences_dataset.FinalDatasetSequences(config["res"],"/gpfs/data/fs72241/lelouedecj/",training=False,validation=True)
     else:
