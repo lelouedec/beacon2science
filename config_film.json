@@ -1,5 +1,5 @@
 {
-    "minibatch":8,
+    "minibatch":4,
     "diffloss":false,
     "res":512,
     "cluster":false,
