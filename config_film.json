@@ -4,5 +4,6 @@
     "res":512,
     "cluster":false,
     "model_name":"FILM_model1.pth",
-    "restart":true
+    "restart":true,
+    "lr":1e-6
 }

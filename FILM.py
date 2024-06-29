@@ -610,7 +610,7 @@ if __name__ == "__main__":
                                             )
     
     pixel_looser = nn.L1Loss(reduction="mean")
-    optimizer = optim.Adam(model.parameters(),1e-5)
+    optimizer = optim.Adam(model.parameters(),config["lr"])
     writer = SummaryWriter()
     best_validation = 20.0
 
