@@ -1,9 +1,9 @@
 {
-    "minibatch":4,
-    "diffloss":false,
+    "minibatch":10,
+    "diffloss":true,
     "res":512,
-    "cluster":false,
-    "model_name":"FILM_model1.pth",
+    "cluster":true,
+    "model_name":"FILM_model2.pth",
     "restart":true,
-    "lr":1e-6
+    "lr":1e-5
 }
