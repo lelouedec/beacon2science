@@ -85,12 +85,13 @@ def test():
                 hdr1_2 = hdr.copy()
                 hdr2_2 = hdr.copy()
 
-
+                print( hdr["crval1a"],hdr["crval2a"],hdr["DATE-END"])
                 crval1 = hdr["crval1a"] + (hdr2["crval1a"] - hdr["crval1a"])*0.33
                 crval2 = hdr["crval2a"] + (hdr2["crval2a"] - hdr["crval2a"])*0.33
                 hdr1_2["crval1a"] = crval1
                 hdr1_2["crval2a"] = crval2
                 hdr1_2["DATE-END"] = time1
+                print(crval1,crval2,time1)
 
 
                 crval1 = hdr["crval1a"] + (hdr2["crval1a"] - hdr["crval1a"])*0.66
@@ -98,6 +99,10 @@ def test():
                 hdr2_2["crval1a"] = crval1
                 hdr2_2["crval2a"] = crval2
                 hdr2_2["DATE-END"] = time2
+
+                print(crval1,crval2,time2)
+                print( hdr2["crval1a"],hdr2["crval2a"],hdr2["DATE-END"])
+                exit()
                 
                 fits.writeto("../enhanced_fits/"+name1+".fts", output1.astype(np.float32), hdr1_2, output_verify='silentfix', overwrite=True)
                 fits.writeto("../enhanced_fits/"+name2+".fts", output2.astype(np.float32), hdr2_2, output_verify='silentfix', overwrite=True)

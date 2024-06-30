@@ -49,7 +49,7 @@ def insert_cut(dates,dtime,diff,cuts,header,size):
     wcoord = WCS(header)
     # diff  = (diff-diff.min())/(diff.max()-diff.min())
     for i,d in enumerate(dates):
-        if(np.abs((d-dtime).total_seconds()/60.0)<20.0):
+        if(np.abs((d-dtime).total_seconds()/60.0)<10.0):
 
             earth = get_body_heliographic_stonyhurst('earth', dtime)
             stereo = get_horizons_coord('STEREO-A', dtime)
