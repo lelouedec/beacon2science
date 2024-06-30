@@ -65,6 +65,10 @@ def test():
                 timeout2 = time1+timedelta(seconds=diff_time*0.66)
                 name1    = str(timeout1.year) +"-"+ '%02d' %timeout1.month +"-"+'%02d' % timeout1.day+"T"+'%02d' %timeout1.hour+"-"+'%02d' % timeout1.minute+"-"+'%02d' %timeout1.second+".000"
                 name2    = str(timeout2.year) +"-"+ '%02d' %timeout2.month +"-"+'%02d' % timeout2.day+"T"+'%02d' %timeout2.hour+"-"+'%02d' % timeout2.minute+"-"+'%02d' %timeout2.second+".000"
+
+
+                time1    = str(timeout1.year) +"-"+ '%02d' %timeout1.month +"-"+'%02d' % timeout1.day+"T"+'%02d' %timeout1.hour+":"+'%02d' % timeout1.minute+":"+'%02d' %timeout1.second+".000"
+                time2    = str(timeout2.year) +"-"+ '%02d' %timeout2.month +"-"+'%02d' % timeout2.day+"T"+'%02d' %timeout2.hour+":"+'%02d' % timeout2.minute+":"+'%02d' %timeout2.second+".000"
                 
 
                 ## move img input to fits file with correct header
@@ -86,17 +90,17 @@ def test():
                 crval2 = hdr["crval2a"] + (hdr2["crval2a"] - hdr["crval2a"])*0.33
                 hdr1_2["crval1a"] = crval1
                 hdr1_2["crval2a"] = crval2
-                hdr1_2["DATE-END"] = name1
+                hdr1_2["DATE-END"] = time1
 
 
                 crval1 = hdr["crval1a"] + (hdr2["crval1a"] - hdr["crval1a"])*0.66
                 crval2 = hdr["crval2a"] + (hdr2["crval2a"] - hdr["crval2a"])*0.66
                 hdr2_2["crval1a"] = crval1
                 hdr2_2["crval2a"] = crval2
-                hdr2_2["DATE-END"] = name2
+                hdr2_2["DATE-END"] = time2
                 
-                fits.writeto("../enhanced_fits/"+name1+".fts", output1.astype(np.float32), hdr, output_verify='silentfix', overwrite=True)
-                fits.writeto("../enhanced_fits/"+name2+".fts", output2.astype(np.float32), hdr, output_verify='silentfix', overwrite=True)
+                fits.writeto("../enhanced_fits/"+name1+".fts", output1.astype(np.float32), hdr1_2, output_verify='silentfix', overwrite=True)
+                fits.writeto("../enhanced_fits/"+name2+".fts", output2.astype(np.float32), hdr2_2, output_verify='silentfix', overwrite=True)
 
             else:
                 name = '../test_fits/'+imgs_paths[p].split("/")[-1][:-3]+"fts"

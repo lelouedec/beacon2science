@@ -23,7 +23,7 @@ import cv2
 import os 
 from matplotlib.ticker import MultipleLocator
 import matplotlib
-matplotlib.rcParams['backend'] = 'Qt5Agg' 
+# matplotlib.rcParams['backend'] = 'Qt5Agg' 
 
 
 
@@ -219,11 +219,6 @@ def compute_running_difference(datas,headers,shift_multiplier,median=True):
     else:
         kernel = 5 
     for i in range(1,len(datas)):
-        if(headers[i] is None):#first or second image interpolated
-            if(headers[i-1] is None):##
-
-            else:
-
         time1 = datetime.strptime(headers[i-1]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
         time2 = datetime.strptime(headers[i]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
         if( ((time2-time1).total_seconds()/60.0)<400.0):
@@ -252,7 +247,7 @@ def compute_running_difference(datas,headers,shift_multiplier,median=True):
 
     return differences,headers_differences
             
-def create_jplot_from_differences(differences,headers):
+def create_jplot_from_differences(differences,headers,cadence=120):
     date1 = datetime.strptime(headers[0]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
     date2  = datetime.strptime(headers[-1]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
 
@@ -261,7 +256,7 @@ def create_jplot_from_differences(differences,headers):
     current_date = date1
     while current_date <= date2:
         dates2.append(current_date)
-        current_date = current_date + timedelta(minutes=120)
+        current_date = current_date + timedelta(minutes=cadence)
     dates2.append(date2)
 
 
@@ -343,65 +338,66 @@ def load_enhanced_beacon(dates,path='/Volumes/Data_drive/res_model_final3/'):
                 imgs_headers.append(filea[0].header)
                 filea.close()
             else:
-                # hdr = imgs_headers[-1]
-                # if(j+1<len(imgs)):
-                #     if(os.path.exists('/Volumes/Data_drive/Reduced/Test/'+prefix+"/beacon/"+imgs[j+1].split("/")[-1][:-3]+"fts")):
-                #         filea = fits.open('/Volumes/Data_drive/Reduced/Test/'+prefix+"/beacon/"+imgs[j+1].split("/")[-1][:-3]+"fts")
-                #         hdr2 = filea[0].header
-                #         filea.close()
-                #     else:
-                #         filea = fits.open('/Volumes/Data_drive/Reduced/Test/'+prefix+"/beacon/"+imgs[j+2].split("/")[-1][:-3]+"fts")
-                #         hdr2 = filea[0].header
-                #         filea.close()
-
-                # crval1 = hdr["crval1a"] + (hdr2["crval1a"] - hdr["crval1a"])
-                # crval2 = hdr["crval2a"] + (hdr2["crval2a"] - hdr["crval2a"])
                 imgs_headers.append(None)
             imgs_list.append(np.asarray(Image.open(im).convert("L"))/255.0)
 
     return imgs_list,imgs_headers
 
+def load_final_enhanced(dates,path):
+    imgs_list    = []
+    imgs_headers = []
+    for e in dates:
+        prefix=str(e.strftime('%Y'))+"-"+str(e.strftime('%m'))+"-"+str(e.strftime('%d'))
+        imgs = natsorted(glob.glob(path+prefix+"*"))
+        for im in imgs:
+            filea = fits.open(im)
+            imgs_headers.append(filea[0].header)
+            imgs_list.append(filea[0].data)
+            filea.close()
+    return imgs_list,imgs_headers
+
+
 
 events_selected = [ 
-                    "03/09/2009",
-                    "03/04/2010",
-                    "08/04/2010",
-                    "23/05/2010",
-                    "16/06/2010",
-                    "01/08/2010",
-                    "15/12/2010",
-                    "30/01/2011",
-                    "14/02/2011",
-                    "23/06/2011",
-                    "02/08/2011",
-                    "06/09/2011",
-                    "22/10/2011",
-                    "12/07/2012",
-                    "15/01/2013",
-                    "30/09/2013",
-                    "15/04/2020",
-                    "23/06/2020",
-                    "09/07/2020",
-                    "20/07/2020",
-                    "30/09/2020",
-                    "26/10/2020",
-                    "07/12/2020",
-                    "11/02/2021",
-                    "20/02/2021",
-                    "10/04/2021",
-                    "22/04/2021",
-                    "09/05/2021",
-                    "29/05/2021",
-                    "23/08/2021",
-                    "13/09/2021",
-                    "09/10/2021",
-                    "04/04/2022",
-                    "11/04/2022",
-                    "27/06/2022",
-                    "03/07/2022",
-                    "03/11/2022",
-                    "31/12/2022",
-                    "16/04/2023",
+                    # "03/09/2009",
+                    # "03/04/2010",
+                    # "08/04/2010",
+                    # "23/05/2010",
+                    # "16/06/2010",
+                    # "01/08/2010",
+                    # "15/12/2010",
+                    # "30/01/2011",
+                    # "14/02/2011",
+                    # "23/06/2011",
+                    # "02/08/2011",
+                    # "06/09/2011",
+                    # "22/10/2011",
+                    # "12/07/2012",
+                    # "15/01/2013",
+                    # "30/09/2013",
+                    # "15/04/2020",
+                    # "23/06/2020",
+                    # "09/07/2020",
+                    # "20/07/2020",
+                    # "30/09/2020",
+                    # "26/10/2020",
+                    # "07/12/2020",
+                    # "11/02/2021",
+                    # "20/02/2021",
+                    # "10/04/2021",
+                    # "22/04/2021",
+                    # "09/05/2021",
+                    # "29/05/2021",
+                    # "23/08/2021",
+                    # "13/09/2021",
+                    # "09/10/2021",
+                    # "04/04/2022",
+                    # "11/04/2022",
+                    # "27/06/2022",
+                    # "03/07/2022",
+                    # "03/11/2022",
+                    # "31/12/2022",
+                    # "16/04/2023",
                     "21/04/2023"
                 ]
 
@@ -437,7 +433,7 @@ for i in range(0,len(new_events_list)):
     # else:
     #     origin = 'lower'
 
-    # fig,ax = plt.subplots(2,2,figsize=(20,10))
+    # fig,ax = plt.subplots(3,2,figsize=(20,10))
     # p2, p96 = np.nanpercentile(cuts_beacon, (5, 98))
     # cuts_beacon2 = exposure.rescale_intensity(cuts_beacon, in_range=(p2, p96))
     # vmin_h1 = np.nanmedian(cuts_beacon2) - 0.5 * np.nanstd(cuts_beacon2)
@@ -477,28 +473,49 @@ for i in range(0,len(new_events_list)):
     # ax[1][1].imshow(cuts_enhanced,aspect="auto",origin=origin,interpolation='none',extent = [dates[0],dates[-1],elongations2[0],elongations2[-1]],cmap='afmhot',vmin=vmin_h1,vmax=vmax_h1)
 
 
+    fig,ax = plt.subplots(1,2)
 
+   
 
-    # for a in ax.reshape(-1): 
-    #     a.yaxis.set_minor_locator(MultipleLocator(2))
-    #     a.xaxis.set_major_locator(mdates.HourLocator(byhour=range(0, 24, 24)))
-    #     a.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m/%y'))
-    #     a.xaxis.set_minor_locator(mdates.HourLocator(byhour=range(0, 24, 6)))
-
-
-
-    enhanced_data2, enhanced_headers2 = load_enhanced_beacon(new_events_list[i],"/Volumes/Data_drive/res_NN2_1/")
+    enhanced_data2, enhanced_headers2 = load_final_enhanced(new_events_list[i],"../enhanced_fits/")
     differences2,headers_differences2  = compute_running_difference(enhanced_data2,enhanced_headers2,2,False)
-    # cuts_enhanced2,dates2,elongations3 = create_jplot_from_differences(differences,headers_differences)
+    cuts_enhanced2,dates2,elongations3 = create_jplot_from_differences(differences2,headers_differences2,cadence=40)
     elongations3 = np.asarray(elongations3)#*180/np.pi
     elongations3 = [np.nanmin(elongations3), np.nanmax(elongations3)]
 
 
+     # p2, p96 = np.nanpercentile(cuts_enhanced, (5, 95))
+    # cuts_enhanced2 = exposure.rescale_intensity(cuts_enhanced, in_range=(p2, p96))
+    vmin_h1 = np.nanmedian(cuts_enhanced2) - 0.5 * np.nanstd(cuts_enhanced2)
+    vmax_h1 = np.nanmedian(cuts_enhanced2) + 2 * np.nanstd(cuts_enhanced2)
+    ax[0].imshow(cuts_enhanced2.reshape((cuts_enhanced2.shape[0],cuts_enhanced2.shape[1]*cuts_enhanced2.shape[2])),aspect="auto",origin='lower',interpolation='none',extent = [dates2[0],dates2[-1],elongations3[0],elongations3[-1]],cmap='afmhot',vmin=vmin_h1,vmax=vmax_h1)
+    
 
 
 
+    cuts_enhanced2 = np.median(cuts_enhanced2,2)
+    p2, p96 = np.nanpercentile(cuts_enhanced2, (5, 95))
+    cuts_enhanced2 = exposure.rescale_intensity(cuts_enhanced2, in_range=(p2, p96))
+    vmin_h1 = np.nanmedian(cuts_enhanced2) - 0.5 * np.nanstd(cuts_enhanced2)
+    vmax_h1 = np.nanmedian(cuts_enhanced2) + 2 * np.nanstd(cuts_enhanced2)
+    ax[1].imshow(cuts_enhanced2,aspect="auto",origin='lower',interpolation='none',extent = [dates2[0],dates2[-1],elongations3[0],elongations3[-1]],cmap='afmhot',vmin=vmin_h1,vmax=vmax_h1)
+
+
+
+
+
+    for a in ax.reshape(-1): 
+        a.yaxis.set_minor_locator(MultipleLocator(2))
+        a.xaxis.set_major_locator(mdates.HourLocator(byhour=range(0, 24, 24)))
+        a.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m/%y'))
+        a.xaxis.set_minor_locator(mdates.HourLocator(byhour=range(0, 24, 6)))
+
+
+
+
+    plt.savefig("../test.png")
     # plt.show()
-    plt.savefig("jplots_res_compscience_V2/"+new_events_list[i][3].strftime("%Y-%m-%d").replace(":","-")+"_2.png")
+    # plt.savefig("jplots_res_compscience_V2/"+new_events_list[i][3].strftime("%Y-%m-%d").replace(":","-")+"_2.png")
 
 
 
