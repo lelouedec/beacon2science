@@ -25,9 +25,9 @@ class FinalDatasetSequences(Dataset):
        
         
         if(validation):
-            self.data_json = self.data_json[int(len(self.data_json)*0.9): ]
+            self.data_json = self.data_json[int(len(self.data_json)*0.3): ]
         elif(training and not validation):
-            self.data_json = self.data_json[:int(len(self.data_json)*0.9)]
+            self.data_json = self.data_json[:int(len(self.data_json)*0.98)]
 
 
 
@@ -99,7 +99,7 @@ class FinalDatasetSequences(Dataset):
 
 
         return {
-                "IM1":torch.tensor(s1).unsqueeze(0).float(),
+                "IM1":torch.tensor(shift(s1,shift_arr, order=2,mode='nearest',prefilter=False)).unsqueeze(0).float(),
                 "IM2":torch.tensor(s2).unsqueeze(0).float(),
                 "IM3":torch.tensor(s3).unsqueeze(0).float(),
                 "IM4":torch.tensor(s4).unsqueeze(0).float(),
