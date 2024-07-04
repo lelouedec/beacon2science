@@ -99,7 +99,7 @@ class FinalDatasetSequences(Dataset):
 
 
         return {
-                "IM1":torch.tensor(shift(s1,shift_arr, order=2,mode='nearest',prefilter=False)).unsqueeze(0).float(),
+                "IM1":torch.tensor(s1).unsqueeze(0).float(),
                 "IM2":torch.tensor(s2).unsqueeze(0).float(),
                 "IM3":torch.tensor(s3).unsqueeze(0).float(),
                 "IM4":torch.tensor(s4).unsqueeze(0).float(),
@@ -126,33 +126,15 @@ if __name__ == "__main__":
     # shifts  = []
     for i in range(dataset.__len__()-100,dataset.__len__()):
         item = dataset.__getitem__(i)
-        fig,ax= plt.subplots(2,4)
-        ax[0][0].imshow(item["IM1"][0].cpu().numpy(),cmap='twilight_shifted')
-        ax[0][0].axis("off")
-        ax[0][0].set_title("IM1")
-        ax[0][1].imshow(item["IM3"][0].cpu().numpy(),cmap='twilight_shifted')
-        ax[0][1].axis("off")
-        ax[0][1].set_title("IM3")
-        ax[0][2].imshow(item["IM4"][0].cpu().numpy(),cmap='twilight_shifted')
-        ax[0][2].axis("off")
-        ax[0][2].set_title("IM4")
-        ax[0][3].imshow(item["IM2"][0].cpu().numpy(),cmap='twilight_shifted')
-        ax[0][3].axis("off")
-        ax[0][3].set_title("IM2")
 
-        ax[1][0].imshow(item["diff0"][0].cpu().numpy(),cmap='gray')
-        ax[1][0].axis("off")
-        ax[1][0].set_title("diff0")
-
-
-        ax[1][1].imshow(item["diff1"][0].cpu().numpy(),cmap='gray')
-        ax[1][1].axis("off")
-        ax[1][1].set_title("diff1")
-        ax[1][2].imshow(item["diff2"][0].cpu().numpy(),cmap='gray')
-        ax[1][2].axis("off")
-        ax[1][2].set_title("diff2")
-        ax[1][3].imshow(item["diff3"][0].cpu().numpy(),cmap='gray')
-        ax[1][3].axis("off")
-        ax[1][3].set_title("diff3")
+        diff120 =(item["IM2"]-item["IM1"])[0].cpu().numpy()
+        diff120 = (diff120- diff120.min())/(diff120.max()-diff120.min())
+        diff40  =(item["IM2"]-item["IM4"])[0].cpu().numpy()
+        diff40 = (diff40- diff40.min())/(diff40.max()-diff40.min())
+        error   = diff40-diff120
+        fig,ax = plt.subplots(1,3)
+        ax[0].imshow(diff120,cmap='gray')
+        ax[1].imshow(diff40,cmap='gray')
+        ax[2].imshow(error,cmap='bwr')
         plt.show()
     
