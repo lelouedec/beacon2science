@@ -321,7 +321,7 @@ class IFNet_m(nn.Module):
         self.unet = Unet()
 
     def forward(self, x, scale=[4,2,1], timestep=0.5, returnflow=False):
-        timestep = torch.zeros((x.shape[0],3,x.shape[2],x.shape[3])) * timestep
+        timestep = torch.zeros((x.shape[0],3,x.shape[2],x.shape[3])).to(device) * timestep
         img0 = x[:, 0].unsqueeze(1)
         img1 = x[:, 1].unsqueeze(1)
         gt = x[:, 2].unsqueeze(1) # In inference time, gt is None
