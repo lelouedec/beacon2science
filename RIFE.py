@@ -6,6 +6,7 @@ import numpy as np
 import torchvision.models as models
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(device)
 backwarp_tenGrid = {}
 
 
@@ -324,6 +325,7 @@ class IFNet_m(nn.Module):
         timestep = torch.zeros((x.shape[0],3,x.shape[2],x.shape[3])).to(device) * timestep
         img0 = x[:, 0].unsqueeze(1)
         img1 = x[:, 1].unsqueeze(1)
+        print(img0,img1,timestep)
         gt = x[:, 2].unsqueeze(1) # In inference time, gt is None
         flow_list = []
         merged = []
@@ -438,12 +440,6 @@ if __name__ == "__main__":
         config = json.load(handle)
 
 
-
-    device = torch.device("cpu")
-    # if(torch.backends.mps.is_available()):
-    #     device = torch.device("mps")
-    if(torch.cuda.is_available()):
-        device = torch.device("cuda")
 
     precision = torch.float32
 
