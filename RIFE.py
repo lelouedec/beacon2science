@@ -452,8 +452,8 @@ if __name__ == "__main__":
     if(config["restart"]):
         model.load_state_dict(torch.load(config["model_name"],map_location=torch.device('cpu')))
 
-    if(torch.cuda.device_count() >1):
-        model = torch.nn.DataParallel(model)
+    # if(torch.cuda.device_count() >1):
+    #     model = torch.nn.DataParallel(model)
 
     # model.to(device=device, dtype=precision)
 
