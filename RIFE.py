@@ -394,7 +394,7 @@ class Model:
 
     def save_model(self, path, rank=0):
         if rank == 0:
-            torch.save(self.flownet.state_dict(),'{}/flownet.pkl'.format(path))
+            torch.save(self.flownet.state_dict(),path)
 
     def update(self, img0, img1, gt, learning_rate=0, mul=1, training=True, flow_gt=None,timestep=0.5):
         for param_group in self.optimG.param_groups:
