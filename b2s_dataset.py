@@ -51,7 +51,7 @@ class FinalDataset(Dataset):
 
         distances = (distances-distances.min())/(distances.max()-distances.min())
 
-        distances = distances * 5
+        distances = distances
 
         ### pre conjecture 
         if(int(self.data_json[index]["s1"].split("-")[0])<=2015 and int(self.data_json[index]["s1"].split("-")[1])<7):

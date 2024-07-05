@@ -34,8 +34,8 @@ def train_discriminator(discriminator,data,sr,adversarial_looser,device,target):
    
     sr_output = discriminator(sr.detach().clone())
 
-    real_label = torch.full([target.shape[0], 2], 1.0, dtype=torch.float, device=device,requires_grad=False)
-    fake_label = torch.full([target.shape[0], 2], 0.0, dtype=torch.float, device=device,requires_grad=False)
+    real_label = torch.full([target.shape[0], 1], 1.0, dtype=torch.float, device=device,requires_grad=False)
+    fake_label = torch.full([target.shape[0], 1], 0.0, dtype=torch.float, device=device,requires_grad=False)
 
 
     adversarial_loss  = (adversarial_looser(gt_output-sr_output.mean(0,keepdim=True), real_label) +\
@@ -53,22 +53,22 @@ def train(config):
     if(torch.backends.mps.is_available()):
         device = torch.device("mps")
     elif(torch.cuda.is_available()):
-        device = torch.device("cuda:1")
+        device = torch.device("cuda")
 
     
     print("THIS WILL RUN ON DEVICE:", device)
 
-    model = unet2.ResUnet(2,full_size=config["full_size"])
-    discriminator = ESRGAN.Discriminator(2,2,64,full_size=config["full_size"])
+    model = unet2.ResUnet(1,full_size=config["full_size"])
+    discriminator = ESRGAN.Discriminator(1,1,64,full_size=config["full_size"])
 
     if(config["load_models"]==True):
         model.load_state_dict(torch.load(config["generator"],map_location=torch.device('cpu')))
         discriminator.load_state_dict(torch.load(config["discriminator"],map_location=torch.device('cpu')))
 
 
-    #if(torch.cuda.device_count() >1):
-    #    model = torch.nn.DataParallel(model)
-    #    discriminator = torch.nn.DataParallel(discriminator)
+    if(torch.cuda.device_count() >1):
+        model = torch.nn.DataParallel(model)
+        discriminator = torch.nn.DataParallel(discriminator)
 
     model.to(device)
     discriminator.to(device)
@@ -160,20 +160,18 @@ def train(config):
             LR2 = data["LR2"].to(device)
             HR1 = data["HR1"].to(device)
             HR2 = data["HR2"].to(device)
-            distances = data["distances"].to(device)
 
 
             D1  = data["diff1"].to(device)
 
 
             g_optimizer.zero_grad()
-            sr = model(LR1,LR2)
+            sr1 = model(LR1,LR2)
 
-            sr1 = sr[:,0,:,:].unsqueeze(1)
-            sr2 = sr[:,1,:,:].unsqueeze(1)
+            sr2 = model(LR2,LR1)
 
 
-            real_label = torch.full([sr1.shape[0], 2], 1.0, dtype=torch.float, device=device,requires_grad=False)
+            real_label = torch.full([sr1.shape[0], 1], 1.0, dtype=torch.float, device=device,requires_grad=False)
 
 
             shift  = data["tr1"].float().to(device)
@@ -187,20 +185,23 @@ def train(config):
 
             
             loss =  pixel_weight*((0.5*pixel_looser(sr1.float(),HR1)+0.5*pixel_looser(sr2.float(),HR2))).mean()
-            if(config["distreg"]):
-                loss = loss + (distances-sr1.float() + distances-sr2.float()).sum()
-                
-                
             if(config["diff_loss"]):
                 loss = loss + diff_weight*(diff_loss).mean() 
 
              
             if(cnt>warmupiter):
-                gt_output = discriminator(torch.cat([HR1,HR2],1))
-                sr_output = discriminator(sr)
+                gt_output = discriminator(HR1)
+                sr_output = discriminator(sr1)
+                adversarial_loss=  adversarial_looser(sr_output-gt_output.mean(0,keepdim=True), real_label)
                 
-                adversarial_loss=  adversarial_looser(sr_output-gt_output.mean(0,keepdim=True), real_label) 
                 loss+= adversarial_weight*adversarial_loss
+                
+                gt_output = discriminator(HR2)
+                sr_output = discriminator(sr2)
+                adversarial_loss2 =  adversarial_looser(sr_output-gt_output.mean(0,keepdim=True), real_label)
+                
+                loss+= adversarial_weight*adversarial_loss2
+                
 
             loss.backward()
             g_optimizer.step()
@@ -213,7 +214,8 @@ def train(config):
 
             
             d_optimizer.zero_grad()
-            d_loss = train_discriminator(discriminator,data,sr,adversarial_looser,device,torch.cat([HR1,HR2],1))
+            d_loss = train_discriminator(discriminator,data,sr1,adversarial_looser,device,HR1)
+            d_loss+= train_discriminator(discriminator,data,sr2,adversarial_looser,device,HR2)
             d_loss.backward()
             d_optimizer.step()
 
@@ -238,14 +240,13 @@ def train(config):
                 LR2 = data["LR2"].to(device)
                 HR1 = data["HR1"].to(device)
                 HR2 = data["HR2"].to(device)
-                distances = data["distances"].to(device)
 
 
                 D1  = data["diff1"].to(device)
-                sr = model(LR1,LR2)
+                sr1 = model(LR1,LR2)
+                sr2 = model(LR2,LR1)
 
-                sr1 = sr[:,0,:,:].unsqueeze(1)
-                sr2 = sr[:,1,:,:].unsqueeze(1)
+                
 
                 shift  = data["tr1"].float().to(device)
                 if(config["full_size"]==512):
@@ -253,29 +254,13 @@ def train(config):
                 difference1 = sr2 - translate(sr1,shift,mode='bilinear',padding_mode='border')
  
             
-                gt_output = discriminator(torch.cat([HR1,HR2],1))
-                sr_output = discriminator(sr)
-
-
-                real_label = torch.full([sr1.shape[0], 2], 1.0, dtype=torch.float, device=device,requires_grad=False)
                 
-                adversarial_loss=  adversarial_looser(sr_output-gt_output.mean(0,keepdim=True), real_label) 
-
-                diff_loss = (difference1-D1)**2
                         
 
                 loss =  pixel_weight*((0.5*pixel_looser(sr1.float(),HR1)+0.5*pixel_looser(sr2.float(),HR2))).mean()
-                
-                if(config["distreg"]):
-                    loss = loss + (distances-sr1.float() + distances-sr2.float()).sum()
-                
-                
-                if(config["diff_loss"]):
-                    loss = loss + diff_weight*(diff_loss).mean() 
-
+               
                
                 g_loss_validation += loss.item()
-                a_loss_validation += adversarial_loss.item()
 
             # scheduler.step(g_loss_validation/dataset_validation.__len__())
             g_losses_validation.append(g_loss_validation/dataset_validation.__len__())

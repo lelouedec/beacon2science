@@ -60,7 +60,8 @@ class Squeeze_Excite_Block(nn.Module):
 class ResUnet(nn.Module):
     def __init__(self, channel, filters=[64, 128, 256, 512],full_size=1024):
         super(ResUnet, self).__init__()
-
+        
+        self.channel = channel
         self.input_layer = nn.Sequential(
             nn.Conv2d(channel, filters[0], kernel_size=3, padding=1),
             nn.GroupNorm(1,filters[0]),
@@ -127,7 +128,8 @@ class ResUnet(nn.Module):
 
     def forward(self, x,x2):
 
-        x = torch.cat([x,x2],1)
+        if(self.channel==2):
+            x = torch.cat([x,x2],1)
         # Encoder
         x1   = self.input_layer(x) + self.input_skip(x)
         # print("x1: ",x1.shape)

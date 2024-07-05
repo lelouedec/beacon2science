@@ -325,7 +325,10 @@ class IFNet_m(nn.Module):
         timestep = torch.ones((x.shape[0],3,x.shape[2],x.shape[3])).to(device) * timestep
         img0 = x[:, 0].unsqueeze(1)
         img1 = x[:, 1].unsqueeze(1)
-        gt = x[:, 2].unsqueeze(1) # In inference time, gt is None
+        if(x.shape[1]>2):
+            gt = x[:, 2].unsqueeze(1) # In inference time, gt is None
+        else:
+            gt = None
         flow_list = []
         merged = []
         mask_list = []
@@ -347,7 +350,7 @@ class IFNet_m(nn.Module):
             warped_img1 = warp(img1, flow[:, 2:4])
             merged_student = (warped_img0, warped_img1)
             merged.append(merged_student)
-        if gt.shape[1] == 1:
+        if gt is not None and gt.shape[1] == 1:
             flow_d, mask_d = self.block_tea(torch.cat((img0, img1, timestep, warped_img0, warped_img1, mask, gt), 1), flow, scale=1)
             flow_teacher = flow + flow_d
             warped_img0_teacher = warp(img0, flow_teacher[:, :2])
@@ -359,7 +362,7 @@ class IFNet_m(nn.Module):
             merged_teacher = None
         for i in range(3):
             merged[i] = merged[i][0] * mask_list[i] + merged[i][1] * (1 - mask_list[i])
-            if gt.shape[1] == 3:
+            if gt is not None and gt.shape[1] == 1:
                 loss_mask = ((merged[i] - gt).abs().mean(1, True) > (merged_teacher - gt).abs().mean(1, True) + 0.01).float().detach()
                 loss_distill += (((flow_teacher.detach() - flow_list[i]) ** 2).mean(1, True) ** 0.5 * loss_mask).mean()
         if returnflow:
@@ -391,10 +394,37 @@ class Model:
 
     def device(self):
         self.flownet.to(device)
+    
+    def load_model(self, path, rank=0):
+        def convert(param):
+            return {
+            k.replace("module.", ""): v
+                for k, v in param.items()
+                if "module." in k
+            }
+        
+        self.flownet.load_state_dict(torch.load(path))
+        
+        
 
     def save_model(self, path, rank=0):
         if rank == 0:
             torch.save(self.flownet.state_dict(),path)
+            
+    def inference(self, img0, img1, scale=1, scale_list=[4, 2, 1], TTA=False, timestep=0.5):
+        for i in range(3):
+            scale_list[i] = scale_list[i] * 1.0 / scale
+        imgs = torch.cat((img0, img1), 1)
+        flow, mask, merged, flow_teacher, merged_teacher, loss_distill = self.flownet(imgs, scale_list, timestep=timestep)
+        if TTA == False:
+            return merged[2]
+        else:
+            flow2, mask2, merged2, flow_teacher2, merged_teacher2, loss_distill2 = self.flownet(imgs.flip(2).flip(3), 
+                                                                                                scale_list, 
+                                                                                                timestep=timestep)
+            return (merged[2] + merged2[2].flip(2).flip(3)) / 2
+        
+        
 
     def update(self, img0, img1, gt, learning_rate=0, mul=1, training=True, flow_gt=None,timestep=0.5):
         for param_group in self.optimG.param_groups:
