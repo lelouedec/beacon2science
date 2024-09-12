@@ -13,6 +13,8 @@ import pickle
 from scipy.ndimage import shift
 import json
 from datetime import datetime
+import random
+
 
 class FinalDatasetSequences(Dataset):
     def __init__(self, resolution=1024,path="../finals_test",training=True,validation=False):
@@ -20,14 +22,22 @@ class FinalDatasetSequences(Dataset):
         self.path = path
        
        
-        with open("sequences_dataset.json", "r") as final:
+        with open("sequences_dataset_final.json", "r") as final:
             self.data_json =  json.load(final)
        
+        np.random.seed(seed=42)
+        all_indices = np.arange(0,len(self.data_json))
+        indices_train = np.array(random.sample(range(0,all_indices.shape[0]), int(all_indices.shape[0]*0.90)))
+        validation_indices = np.setdiff1d(all_indices, indices_train,assume_unique=True)
         
+        print(all_indices.shape[0])
+        print(indices_train.shape[0])
+        print(validation_indices.shape[0])
+                                         
         if(validation):
-            self.data_json = self.data_json[int(len(self.data_json)*0.3): ]
+            self.data_json = [self.data_json[i] for i in indices_train]
         elif(training and not validation):
-            self.data_json = self.data_json[:int(len(self.data_json)*0.98)]
+            self.data_json = [self.data_json[i] for i in validation_indices]
 
 
 
@@ -44,44 +54,48 @@ class FinalDatasetSequences(Dataset):
         s4 = self.clahe_s.apply(np.asarray(Image.open(self.path+"images_science/"+self.data_json[index]["images"][2]).convert("L")))/255.0
         s2 = self.clahe_s.apply(np.asarray(Image.open(self.path+"images_science/"+self.data_json[index]["images"][3]).convert("L")))/255.0
 
-        if(len(self.data_json[index])>4):
-            s5 = self.clahe_s.apply(np.asarray(Image.open(self.path+"images_science/"+self.data_json[index]["images"][4]).convert("L")))/255.0
-            s6 = self.clahe_s.apply(np.asarray(Image.open(self.path+"images_science/"+self.data_json[index]["images"][5]).convert("L")))/255.0
-
+      
+        time1 = datetime.strptime(self.data_json[index]["images"][0][:-9], '%Y-%m-%dT%H-%M-%S')
+        time2 = datetime.strptime(self.data_json[index]["images"][3][:-9], '%Y-%m-%dT%H-%M-%S')
         
-
+        time3 = datetime.strptime(self.data_json[index]["images"][1][:-9], '%Y-%m-%dT%H-%M-%S')
+        time4 = datetime.strptime(self.data_json[index]["images"][2][:-9], '%Y-%m-%dT%H-%M-%S')
         
-        time1 = datetime.strptime(self.data_json[index]["images"][0][:-8], '%Y-%m-%dT%H-%M-%S')
-        time2 = datetime.strptime(self.data_json[index]["images"][3][:-8], '%Y-%m-%dT%H-%M-%S')
-        time3 = datetime.strptime(self.data_json[index]["images"][1][:-8], '%Y-%m-%dT%H-%M-%S')
-        time4 = datetime.strptime(self.data_json[index]["images"][2][:-8], '%Y-%m-%dT%H-%M-%S')
+        # print(self.data_json[index]["images"][0],self.data_json[index]["images"][1],self.data_json[index]["images"][2],self.data_json[index]["images"][3])
 
 
         diff_time  = (time2-time1).total_seconds()
         diff_time2 = (time3-time1).total_seconds()
         diff_time3 = (time4-time1).total_seconds()
 
-        if(len(self.data_json[index])>4):
-            time5 = datetime.strptime(self.data_json[index]["images"][4][:-8], '%Y-%m-%dT%H-%M-%S')
-            time6 = datetime.strptime(self.data_json[index]["images"][5][:-8], '%Y-%m-%dT%H-%M-%S')
-
-            diff_time4 = (time5-time2).total_seconds()
-            diff_time5 = (time6-time2).total_seconds()
-            ratio3 = diff_time4/diff_time
-            ratio4 = diff_time5/diff_time
-
+        
 
         ratio1 = diff_time2/diff_time
         ratio2 = diff_time3/diff_time
 
         shift_arr = np.array(self.data_json[index]["shift"])
-        diff1   = np.float32(s3-shift(s1,shift_arr*ratio1, order=2,mode='nearest',prefilter=False))
-        diff2   = np.float32(s4-shift(s3,shift_arr*ratio1, order=2,mode='nearest',prefilter=False))
-        diff3   = np.float32(s2-shift(s4,shift_arr*ratio1, order=2,mode='nearest',prefilter=False))
-        tr1 = np.array([shift_arr[1],shift_arr[0]])
-
-        diff0   = np.float32(s2-shift(s1,shift_arr, order=2,mode='nearest',prefilter=False))
-
+        diff31   = np.float32(s3.copy()-shift(s1.copy(),shift_arr[1], order=2,mode='nearest',prefilter=False))
+        diff43   = np.float32(s4.copy()-shift(s3.copy(),shift_arr[2], order=2,mode='nearest',prefilter=False))
+        diff24   = np.float32(s2.copy()-shift(s4.copy(),shift_arr[3], order=2,mode='nearest',prefilter=False))
+        
+        
+        
+        
+        tr43 = np.array([shift_arr[2][1],shift_arr[2][0]])
+        tr31 = np.array([shift_arr[1][1],shift_arr[1][0]])
+        tr24 = np.array([shift_arr[3][1],shift_arr[3][0]])
+        if(time1.year<=2015):
+            s1 = np.fliplr(s1)
+            s2 = np.fliplr(s2)
+            s3 = np.fliplr(s3)
+            s4 = np.fliplr(s4)
+            diff1 = np.fliplr(diff1)
+            diff2 = np.fliplr(diff2)
+            diff3 = np.fliplr(diff3)
+            tr43[0] = -1*tr43[0]
+            tr31[0] = -1*tr31[0]
+            tr24[0] = -1*tr24[0]
+        
        
 
         s1  =  cv2.resize(s1, (self.res , self.res),interpolation = cv2.INTER_CUBIC)
@@ -94,7 +108,7 @@ class FinalDatasetSequences(Dataset):
         diff3  =  cv2.resize(diff3, (self.res , self.res),interpolation = cv2.INTER_CUBIC)
        
 
-     
+         
 
 
 
@@ -105,11 +119,12 @@ class FinalDatasetSequences(Dataset):
                 "IM4":torch.tensor(s4).unsqueeze(0).float(),
                 "ratio1":ratio1,
                 "ratio2":ratio2,
-                "diff1"   : torch.tensor(diff1).unsqueeze(0).float(),
-                "diff2"   : torch.tensor(diff2).unsqueeze(0).float(),
-                "diff3"   : torch.tensor(diff3).unsqueeze(0).float(),
-                "diff0"   : torch.tensor(diff0).unsqueeze(0).float(),
-                "shift"   :   tr1*ratio1
+                "diff31"   : torch.tensor(diff31).unsqueeze(0).float(),
+                "diff43"   : torch.tensor(diff43).unsqueeze(0).float(),
+                "diff24"   : torch.tensor(diff24).unsqueeze(0).float(),
+                "tr43"   : torch.tensor(tr43),
+                "tr31"   : torch.tensor(tr31),
+                "tr24"   : torch.tensor(tr24)
                 }
     
 
@@ -121,7 +136,8 @@ class FinalDatasetSequences(Dataset):
 
 
 if __name__ == "__main__":
-    dataset = FinalDatasetSequences(1024,"/Volumes/Data_drive/",True)
+    dataset = FinalDatasetSequences(resolution=1024,path="../",training=True,validation=False)
+    print(dataset.__len__())
 
     # shifts  = []
     for i in range(dataset.__len__()-100,dataset.__len__()):
