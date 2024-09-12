@@ -35,9 +35,9 @@ class FinalDatasetSequences(Dataset):
         print(validation_indices.shape[0])
                                          
         if(validation):
-            self.data_json = [self.data_json[i] for i in indices_train]
-        elif(training and not validation):
             self.data_json = [self.data_json[i] for i in validation_indices]
+        elif(training and not validation):
+            self.data_json = [self.data_json[i] for i in indices_train]
 
 
 
@@ -49,10 +49,10 @@ class FinalDatasetSequences(Dataset):
         self.clahe_s = cv2.createCLAHE(clipLimit=10,tileGridSize=(10,10))
        
 
-        s1 = self.clahe_s.apply(np.asarray(Image.open(self.path+"images_science/"+self.data_json[index]["images"][0]).convert("L")))/255.0
-        s3 = self.clahe_s.apply(np.asarray(Image.open(self.path+"images_science/"+self.data_json[index]["images"][1]).convert("L")))/255.0
-        s4 = self.clahe_s.apply(np.asarray(Image.open(self.path+"images_science/"+self.data_json[index]["images"][2]).convert("L")))/255.0
-        s2 = self.clahe_s.apply(np.asarray(Image.open(self.path+"images_science/"+self.data_json[index]["images"][3]).convert("L")))/255.0
+        s1 = self.clahe_s.apply(np.asarray(Image.open(self.path+"training/science/"+self.data_json[index]["images"][0]).convert("L")))/255.0
+        s3 = self.clahe_s.apply(np.asarray(Image.open(self.path+"training/science/"+self.data_json[index]["images"][1]).convert("L")))/255.0
+        s4 = self.clahe_s.apply(np.asarray(Image.open(self.path+"training/science/"+self.data_json[index]["images"][2]).convert("L")))/255.0
+        s2 = self.clahe_s.apply(np.asarray(Image.open(self.path+"training/science/"+self.data_json[index]["images"][3]).convert("L")))/255.0
 
       
         time1 = datetime.strptime(self.data_json[index]["images"][0][:-9], '%Y-%m-%dT%H-%M-%S')
@@ -73,7 +73,7 @@ class FinalDatasetSequences(Dataset):
         ratio1 = diff_time2/diff_time
         ratio2 = diff_time3/diff_time
 
-        shift_arr = np.array(self.data_json[index]["shift"])
+        shift_arr = np.array(self.data_json[index]["shifts"])
         diff31   = np.float32(s3.copy()-shift(s1.copy(),shift_arr[1], order=2,mode='nearest',prefilter=False))
         diff43   = np.float32(s4.copy()-shift(s3.copy(),shift_arr[2], order=2,mode='nearest',prefilter=False))
         diff24   = np.float32(s2.copy()-shift(s4.copy(),shift_arr[3], order=2,mode='nearest',prefilter=False))
