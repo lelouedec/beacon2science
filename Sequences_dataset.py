@@ -22,7 +22,7 @@ class FinalDatasetSequences(Dataset):
         self.path = path
        
        
-        with open("sequences_dataset_final.json", "r") as final:
+        with open("sequence_dataset_final.json", "r") as final:
             self.data_json =  json.load(final)
        
         np.random.seed(seed=42)
