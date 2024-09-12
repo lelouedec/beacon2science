@@ -495,8 +495,8 @@ if __name__ == "__main__":
     model.to(device=device, dtype=precision)
 
     if(config["cluster"]):
-        dataset = Sequences_dataset.FinalDatasetSequences(config["res"],"/gpfs/data/fs72241/lelouedecj/Dataset/",training=True,validation=False)
-        dataset_validation = Sequences_dataset.FinalDatasetSequences(config["res"],"/gpfs/data/fs72241/lelouedecj/Dataset/",training=False,validation=True)
+        dataset = Sequences_dataset.FinalDatasetSequences(config["full_size"],"/gpfs/data/fs72241/lelouedecj/Dataset/",training=True,validation=False)
+        dataset_validation = Sequences_dataset.FinalDatasetSequences(config["full_size"],"/gpfs/data/fs72241/lelouedecj/Dataset/",training=False,validation=True)
     else:
         # dataset = Sequences_dataset.FinalDatasetSequences(config["res"],"/Volumes/Data_drive/",training=True,validation=False)
         # dataset_validation = Sequences_dataset.FinalDatasetSequences(config["res"],"/Volumes/Data_drive/",training=False,validation=True)
