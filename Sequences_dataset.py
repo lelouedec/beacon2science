@@ -103,9 +103,9 @@ class FinalDatasetSequences(Dataset):
         s3  =  cv2.resize(s3, (self.res , self.res),interpolation = cv2.INTER_CUBIC)
         s4  =  cv2.resize(s4, (self.res , self.res),interpolation = cv2.INTER_CUBIC)
 
-        diff1  =  cv2.resize(diff1, (self.res , self.res),interpolation = cv2.INTER_CUBIC)
-        diff2  =  cv2.resize(diff2, (self.res , self.res),interpolation = cv2.INTER_CUBIC)
-        diff3  =  cv2.resize(diff3, (self.res , self.res),interpolation = cv2.INTER_CUBIC)
+        diff31  =  cv2.resize(diff31, (self.res , self.res),interpolation = cv2.INTER_CUBIC)
+        diff43  =  cv2.resize(diff43, (self.res , self.res),interpolation = cv2.INTER_CUBIC)
+        diff24  =  cv2.resize(diff24, (self.res , self.res),interpolation = cv2.INTER_CUBIC)
        
 
          
