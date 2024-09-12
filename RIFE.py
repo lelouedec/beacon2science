@@ -489,10 +489,10 @@ if __name__ == "__main__":
     # if(config["restart"]):
     # model.load_model("RIFE_diff.pth")
 
-#     if(torch.cuda.device_count() >1):
-#         model = torch.nn.DataParallel(model)
+    if(torch.cuda.device_count() >1):
+        model = torch.nn.DataParallel(model)
 
-#     model.to(device=device, dtype=precision)
+    model.to(device=device, dtype=precision)
 
     if(config["cluster"]):
         dataset = Sequences_dataset.FinalDatasetSequences(config["res"],"/gpfs/data/fs72241/lelouedecj/Dataset/",training=True,validation=False)
