@@ -1,9 +1,10 @@
 {
-    "minibatch":10,
+    "minibatch":8,
     "diffloss":true,
-    "res":256,
-    "cluster":false,
-    "model_name":"FILM_model_test.pth",
+    "full_size":512,
+    "cluster":true,
+    "model_name":"FILM_diff.pth",
     "restart":false,
-    "lr":1e-5
+    "lr":1e-5,
+    "logdir":"runs/rife_diff"
 }
