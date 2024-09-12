@@ -4,11 +4,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import torchvision.models as models
+from kornia.geometry.transform import translate
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 backwarp_tenGrid = {}
-
+import matplotlib.cm
 
 class EPE(nn.Module):
     def __init__(self):
@@ -235,7 +237,7 @@ class Unet(nn.Module):
         self.up1 = deconv(16*c, 4*c)
         self.up2 = deconv(8*c, 2*c)
         self.up3 = deconv(4*c, c)
-        self.conv = nn.Conv2d(c, 3, 3, 1, 1)
+        self.conv = nn.Conv2d(c, 1, 3, 1, 1)
 
     def forward(self, img0, img1, warped_img0, warped_img1, mask, flow, c0, c1):
         s0 = self.down0(torch.cat((img0, img1, warped_img0, warped_img1, mask, flow), 1))
@@ -314,15 +316,16 @@ class IFBlock(nn.Module):
 class IFNet_m(nn.Module):
     def __init__(self):
         super(IFNet_m, self).__init__()
-        self.block0 = IFBlock(5, c=240)
-        self.block1 = IFBlock(12, c=150)
-        self.block2 = IFBlock(12, c=90)
-        self.block_tea = IFBlock(13, c=90)
+        self.block0 = IFBlock(3, c=240)
+        self.block1 = IFBlock(10, c=150)
+        self.block2 = IFBlock(10, c=90)
+        self.block_tea = IFBlock(11, c=90)
         self.contextnet = Contextnet()
         self.unet = Unet()
 
     def forward(self, x, scale=[4,2,1], timestep=0.5, returnflow=False):
-        timestep = torch.ones((x.shape[0],3,x.shape[2],x.shape[3])).to(device) * timestep
+        timestep = torch.ones((x.shape[0],1,x.shape[2],x.shape[3])) * timestep[:,None,None,None]
+        timestep = timestep.to(device)
         img0 = x[:, 0].unsqueeze(1)
         img1 = x[:, 1].unsqueeze(1)
         if(x.shape[1]>2):
@@ -384,6 +387,7 @@ class Model:
         self.epe = EPE()
         self.lap = LapLoss()
         self.sobel = SOBEL()
+        self.l1 = nn.L1Loss()
 
     def train(self):
         self.flownet.train()
@@ -426,7 +430,7 @@ class Model:
         
         
 
-    def update(self, img0, img1, gt, learning_rate=0, mul=1, training=True, flow_gt=None,timestep=0.5):
+    def update(self, img0, img1, gt, learning_rate=0, mul=1, training=True, flow_gt=None,timestep=0.5,diff=None,first=True,shift=None):
         for param_group in self.optimG.param_groups:
             param_group['lr'] = learning_rate
         
@@ -434,27 +438,35 @@ class Model:
             self.train()
         else:
             self.eval()
-        flow, mask, merged, flow_teacher, merged_teacher, loss_distill = self.flownet(torch.cat([img0,img1, gt], 1), scale=[4, 2, 1])
-        loss_l1 = (self.lap(merged[2], gt)).mean()
-        loss_tea = (self.lap(merged_teacher, gt)).mean()
-        if training:
-            self.optimG.zero_grad()
-            loss_G = loss_l1 + loss_tea + loss_distill * 0.01 # when training RIFEm, the weight of loss_distill should be 0.005 or 0.002
-            loss_G.backward()
-            self.optimG.step()
+        flow, mask, merged, flow_teacher, merged_teacher, loss_distill = self.flownet(torch.cat([img0,img1, gt], 1), scale=[4, 2, 1],timestep=timestep)
+        loss_l1   = (self.lap(merged[2], gt)).mean()
+        if(diff is not None):
+            if(first):
+                diff_pred = merged[2] - translate(img0,shift,mode='bilinear',padding_mode='border')
+                loss_diff = self.lap(diff_pred, diff)
+            else:
+                diff_pred = img1 - translate(merged[2],shift,mode='bilinear',padding_mode='border')
+                loss_diff = self.lap(diff_pred, diff)
+        else:
+            loss_diff = 0
+        loss_tea  = (self.lap(merged_teacher, gt)).mean()
         
-            return merged[2], {
-                'merged_tea': merged_teacher,
-                'mask': mask,
-                'mask_tea': mask,
-                'flow': flow[2][:, :2],
-                'flow_tea': flow_teacher,
-                'loss_l1': loss_l1,
-                'loss_tea': loss_tea,
-                'loss_distill': loss_distill,
-                'bigloss':loss_G
-                }
-    
+        loss_G    = loss_l1 + loss_tea + loss_distill * 0.01 + 10 * loss_diff
+        
+        
+        return merged[2], {
+            'merged_tea': merged_teacher,
+            'mask': mask,
+            'mask_tea': mask,
+            'flow': flow[2][:, :2],
+            'flow_tea': flow_teacher,
+            'loss_l1': loss_l1,
+            'loss_tea': loss_tea,
+            'loss_distill': loss_distill,
+            'bigloss':loss_G,
+            'diff_pred':diff_pred
+            }
+        
 
 
 
@@ -474,13 +486,13 @@ if __name__ == "__main__":
 
 
     model = Model()
-    if(config["restart"]):
-        model.load_state_dict(torch.load(config["model_name"],map_location=torch.device('cpu')))
+    # if(config["restart"]):
+    # model.load_model("RIFE_diff.pth")
 
-    # if(torch.cuda.device_count() >1):
-    #     model = torch.nn.DataParallel(model)
+#     if(torch.cuda.device_count() >1):
+#         model = torch.nn.DataParallel(model)
 
-    # model.to(device=device, dtype=precision)
+#     model.to(device=device, dtype=precision)
 
     if(config["cluster"]):
         dataset = Sequences_dataset.FinalDatasetSequences(config["res"],"/gpfs/data/fs72241/lelouedecj/",training=True,validation=False)
@@ -499,7 +511,7 @@ if __name__ == "__main__":
     dataloader = torch.utils.data.DataLoader(
                                                 dataset,
                                                 batch_size=minibacth,
-                                                shuffle=False,
+                                                shuffle=True,
                                                 num_workers=int(minibacth/2),
                                                 pin_memory=False
                                             )
@@ -512,15 +524,15 @@ if __name__ == "__main__":
                                                 pin_memory=False
                                             )
     
-    writer = SummaryWriter()
-    best_validation = 20.0
-
+    writer = SummaryWriter(log_dir=config["logdir"])
+    best_validation = 2.0
+    cmap = matplotlib.cm.get_cmap('gray')
 
     losses1 = []
     losses2 = []
     losses1_v = []
     losses2_v = []
-    for i in range(0,400):
+    for i in range(0,1000):
         l1s = []
         l2s = []
         l1sv = []
@@ -532,72 +544,126 @@ if __name__ == "__main__":
             S3 = data["IM3"].to(device)
             S4 = data["IM4"].to(device)
             
-
-
-            dt1 = torch.ones((S1.shape[0])).to(device) * data["ratio1"].float().to(device)
-            dt2 = torch.ones((S1.shape[0])).to(device) * data["ratio2"].float().to(device)
-
-        
+            diff31 = data["diff31"].to(device)
+            diff43 = data["diff43"].to(device)
+            diff24 = data["diff24"].to(device)
             
+            tr43  = data["tr43"].float().to(device)
+            tr31  = data["tr31"].float().to(device)
+            tr24  = data["tr24"].float().to(device)
 
-            out,dictio = model.update(S1, S2, S3, learning_rate=1e-5, mul=1, training=True, flow_gt=None,timestep=data["ratio1"].float())
 
-            out2,dictio2 = model.update(S1, S2, S4, learning_rate=1e-5, mul=1, training=True, flow_gt=None,timestep=data["ratio2"].float())
+            if(config["full_size"]==512):
+                tr43 = tr43/2
+                tr31 = tr31/2
+                tr24 = tr24/2
             
+            
+            
+            out,dictio = model.update(S1, S2, S3, learning_rate=5e-6, mul=1, training=True, flow_gt=None,timestep=data["ratio1"].float(),diff=diff31,first=True,shift=tr31)
 
+            out2,dictio2 = model.update(S1, S2, S4, learning_rate=5e-6, mul=1, training=True, flow_gt=None,timestep=data["ratio2"].float(),diff=diff24,first=False,shift=tr24)
+            
+            diffpred3 = out2 - translate(out,tr43,mode='bilinear',padding_mode='border')
+                
+            
+            model.optimG.zero_grad()
+            # when training RIFEm, the weight of loss_distill should be 0.005 or 0.002
+            loss_G = (dictio["bigloss"] + dictio2["bigloss"] + model.lap(diff43,diffpred3) )/ 3
+            loss_G.backward()
+            model.optimG.step()
+
+            
             l1s.append(dictio["bigloss"].item())
             l2s.append(dictio2["bigloss"].item())
             
         losses1.append(np.array(l1s).mean())
         losses2.append(np.array(l2s).mean())
         
-        # with torch.no_grad():
-        #     for data in dataloader_validation:
+        with torch.no_grad():
+            for data in dataloader_validation:
 
 
-        #         S1 = data["IM1"].to(device)
-        #         S2 = data["IM2"].to(device)
-        #         S3 = data["IM3"].to(device)
-        #         S4 = data["IM4"].to(device)
+                S1 = data["IM1"].to(device)
+                S2 = data["IM2"].to(device)
+                S3 = data["IM3"].to(device)
+                S4 = data["IM4"].to(device)
+                
+                diff31 = data["diff31"].to(device)
+                diff43 = data["diff43"].to(device)
+                diff24 = data["diff24"].to(device)
+                
+                tr43  = data["tr43"].float().to(device)
+                tr31  = data["tr31"].float().to(device)
+                tr24  = data["tr24"].float().to(device)
+
+
+                if(config["full_size"]==512):
+                    tr43 = tr43/2
+                    tr31 = tr31/2
+                    tr24 = tr24/2
+                
+                out,dictio = model.update(S1, S2, S3, learning_rate=5e-6, mul=1, training=False, flow_gt=None,timestep=data["ratio1"].float(),diff=diff31,first=True,shift=tr31)
+
+                out2,dictio2 = model.update(S1, S2, S4, learning_rate=5e-6, mul=1, training=False, flow_gt=None,timestep=data["ratio2"].float(),diff=diff24,first=False,shift=tr24)
+                
+                diffpred3 = out2 - translate(out,tr43,mode='bilinear',padding_mode='border')
                 
 
-
-        #         dt1 = torch.ones((S1.shape[0])).to(device) * data["ratio1"].float().to(device)
-        #         dt2 = torch.ones((S1.shape[0])).to(device) * data["ratio2"].float().to(device)
-
-                
-
-                
-
-                
+                l1sv.append(dictio["bigloss"].item()+ model.lap(diff2,diffpred3).item()/2)
+                l2sv.append(dictio2["bigloss"].item()+ model.lap(diff2,diffpred3).item()/2)
             
-        #         l1sv.append(loss1_v.item())
-        #         l2sv.append(loss2_v.item())
 
 
-        #     losses1_v.append(np.array(l1sv).mean())
-        #     losses2_v.append(np.array(l2sv).mean())
+            losses1_v.append(np.array(l1sv).mean())
+            losses2_v.append(np.array(l2sv).mean())
 
 
         writer.add_scalar('train 1', np.array(losses1)[-1], i)
         writer.add_scalar('train 2', np.array(losses2)[-1], i)
-        model.save_model("RIFE_test.pth")
-        # writer.add_scalar('val 1', np.array(losses1_v)[-1], i)
-        # writer.add_scalar('val 2', np.array(losses2_v)[-1], i)
         
-        # writer.add_image('s1', S1[0,0,:,:], i, dataformats='HW')
-        # writer.add_image('s2', S2[0,0,:,:], i, dataformats='HW')
-        # writer.add_image('s3', output25[0,0,:,:], i, dataformats='HW')
-        # writer.add_image('s4', output75[0,0,:,:], i, dataformats='HW')
-
-        # writer.add_image('gts3', S3[0,0,:,:], i, dataformats='HW')
-        # writer.add_image('gts4', S4[0,0,:,:], i, dataformats='HW')
+        writer.add_scalar('val 1', np.array(losses1_v)[-1], i)
+        writer.add_scalar('val 2', np.array(losses2_v)[-1], i)
         
+        
+        writer.add_image('input/img1', S1[0,0,:,:], i, dataformats='HW')
+        writer.add_image('input/img2', S2[0,0,:,:], i, dataformats='HW')
 
-
-        # if(len(losses1_v)>1):
-        #     if(losses1_v[-1]+losses2_v[-1]<best_validation):
-        #         torch.save(model.module.state_dict(), config["model_name"])
-        #         best_validation = losses1_v[-1]+losses2_v[-1]
-        # else:
-            # torch.save(model.module.state_dict(), config["model_name"])
+        writer.add_image('output/img1', out[0,0,:,:], i, dataformats='HW')
+        writer.add_image('output/img2', out2[0,0,:,:], i, dataformats='HW')
+        
+        diffpred1 = dictio['diff_pred'][0,0,:,:].cpu().numpy()
+        diffpred1 = (diffpred1 - diffpred1.min())/(diffpred1.max()-diffpred1.min())
+                     
+        diffpred2 = dictio2['diff_pred'][0,0,:,:].cpu().numpy()
+        diffpred2 = (diffpred2 - diffpred2.min())/(diffpred2.max()-diffpred2.min())
+        
+        diffpred3 = out2 - translate(out,tr43,mode='bilinear',padding_mode='border')
+        diffpred3 = diffpred3[0,0,:,:].cpu().numpy()
+        diffpred3 = (diffpred3 -diffpred3.min())/(diffpred3.max()-diffpred3.min())
+        
+        
+        writer.add_image('pred_diffs/img1', cmap(diffpred1)[:,:,:3], i, dataformats='HWC')
+        writer.add_image('pred_diffs/img2', cmap(diffpred2)[:,:,:3], i, dataformats='HWC')
+        writer.add_image('pred_diffs/mid',  cmap(diffpred3)[:,:,:3], i, dataformats='HWC')
+                     
+        diff1 = diff1[0,0,:,:].cpu().numpy()
+        diff1 = (diff1 - diff1.min())/(diff1.max()-diff1.min())
+                 
+        diff3 = diff3[0,0,:,:].cpu().numpy()
+        diff3 = (diff3 - diff3.min())/(diff3.max()-diff3.min())
+        
+        diff2 = diff2[0,0,:,:].cpu().numpy()
+        diff2 = (diff2 - diff2.min())/(diff2.max()-diff2.min())
+        
+        writer.add_image('diffs/img1', cmap(diff1)[:,:,:3], i, dataformats='HWC')
+        writer.add_image('diffs/img2', cmap(diff3)[:,:,:3], i, dataformats='HWC')
+        writer.add_image('diffs/mid',  cmap(diff3)[:,:,:3], i, dataformats='HWC')
+        
+     
+        if(len(losses1_v)>1):
+            if(losses1_v[-1]+losses2_v[-1]<best_validation):
+                model.save_model("RIFE_diff.pth")
+                best_validation = losses1_v[-1]+losses2_v[-1]
+        else:
+            model.save_model("RIFE_diff.pth")
