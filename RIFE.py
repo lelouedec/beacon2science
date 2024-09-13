@@ -7,7 +7,7 @@ import torchvision.models as models
 from kornia.geometry.transform import translate
 
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 print(device)
 backwarp_tenGrid = {}
 import matplotlib.cm
@@ -489,10 +489,10 @@ if __name__ == "__main__":
     # if(config["restart"]):
     # model.load_model("RIFE_diff.pth")
 
-    if(torch.cuda.device_count() >1):
-        model = torch.nn.DataParallel(model)
+    # if(torch.cuda.device_count() >1):
+    #     model = torch.nn.DataParallel(model)
 
-    model.to(device=device, dtype=precision)
+    # model.to(device=device, dtype=precision)
 
     if(config["cluster"]):
         dataset = Sequences_dataset.FinalDatasetSequences(config["full_size"],"/gpfs/data/fs72241/lelouedecj/Dataset/",training=True,validation=False)
@@ -501,8 +501,8 @@ if __name__ == "__main__":
         # dataset = Sequences_dataset.FinalDatasetSequences(config["res"],"/Volumes/Data_drive/",training=True,validation=False)
         # dataset_validation = Sequences_dataset.FinalDatasetSequences(config["res"],"/Volumes/Data_drive/",training=False,validation=True)
 
-        dataset = Sequences_dataset.FinalDatasetSequences(512,"../",training=True,validation=False)
-        dataset_validation = Sequences_dataset.FinalDatasetSequences(512,"../",training=False,validation=True)
+        dataset = Sequences_dataset.FinalDatasetSequences(512,"../Dataset/",training=True,validation=False)
+        dataset_validation = Sequences_dataset.FinalDatasetSequences(512,"../Dataset/",training=False,validation=True)
 
 
     
@@ -610,8 +610,8 @@ if __name__ == "__main__":
                 diffpred3 = out2 - translate(out,tr43,mode='bilinear',padding_mode='border')
                 
 
-                l1sv.append(dictio["bigloss"].item()+ model.lap(diff2,diffpred3).item()/2)
-                l2sv.append(dictio2["bigloss"].item()+ model.lap(diff2,diffpred3).item()/2)
+                l1sv.append(dictio["bigloss"].item()+ model.lap(diff43,diffpred3).item()/2)
+                l2sv.append(dictio2["bigloss"].item()+ model.lap(diff43,diffpred3).item()/2)
             
 
 
@@ -647,23 +647,23 @@ if __name__ == "__main__":
         writer.add_image('pred_diffs/img2', cmap(diffpred2)[:,:,:3], i, dataformats='HWC')
         writer.add_image('pred_diffs/mid',  cmap(diffpred3)[:,:,:3], i, dataformats='HWC')
                      
-        diff1 = diff1[0,0,:,:].cpu().numpy()
-        diff1 = (diff1 - diff1.min())/(diff1.max()-diff1.min())
+        diff31 = diff31[0,0,:,:].cpu().numpy()
+        diff31 = (diff31 - diff31.min())/(diff31.max()-diff31.min())
                  
-        diff3 = diff3[0,0,:,:].cpu().numpy()
-        diff3 = (diff3 - diff3.min())/(diff3.max()-diff3.min())
+        diff43 = diff43[0,0,:,:].cpu().numpy()
+        diff43 = (diff43 - diff43.min())/(diff43.max()-diff43.min())
         
-        diff2 = diff2[0,0,:,:].cpu().numpy()
-        diff2 = (diff2 - diff2.min())/(diff2.max()-diff2.min())
+        diff24 = diff24[0,0,:,:].cpu().numpy()
+        diff24 = (diff24 - diff24.min())/(diff24.max()-diff24.min())
         
-        writer.add_image('diffs/img1', cmap(diff1)[:,:,:3], i, dataformats='HWC')
-        writer.add_image('diffs/img2', cmap(diff3)[:,:,:3], i, dataformats='HWC')
-        writer.add_image('diffs/mid',  cmap(diff3)[:,:,:3], i, dataformats='HWC')
+        writer.add_image('diffs/img1', cmap(diff31)[:,:,:3], i, dataformats='HWC')
+        writer.add_image('diffs/img2', cmap(diff31)[:,:,:3], i, dataformats='HWC')
+        writer.add_image('diffs/mid',  cmap(diff24)[:,:,:3], i, dataformats='HWC')
         
      
         if(len(losses1_v)>1):
             if(losses1_v[-1]+losses2_v[-1]<best_validation):
-                model.save_model("RIFE_diff.pth")
+                model.save_model("RIFE_diff2.pth")
                 best_validation = losses1_v[-1]+losses2_v[-1]
         else:
-            model.save_model("RIFE_diff.pth")
+            model.save_model("RIFE_diff2.pth")
