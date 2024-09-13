@@ -89,9 +89,9 @@ class FinalDatasetSequences(Dataset):
             s2 = np.fliplr(s2)
             s3 = np.fliplr(s3)
             s4 = np.fliplr(s4)
-            diff1 = np.fliplr(diff1)
-            diff2 = np.fliplr(diff2)
-            diff3 = np.fliplr(diff3)
+            diff31 = np.fliplr(diff31)
+            diff43 = np.fliplr(diff43)
+            diff24 = np.fliplr(diff24)
             tr43[0] = -1*tr43[0]
             tr31[0] = -1*tr31[0]
             tr24[0] = -1*tr24[0]
