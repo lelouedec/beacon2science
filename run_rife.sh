@@ -3,7 +3,7 @@
 #SBATCH -J Train_RIFE                           #use -N only if you use both GPUs on the nodes, otherwise leave this line out
 #SBATCH --partition zen2_0256_a40x2
 #SBATCH --qos zen2_0256_a40x2
-#SBATCH --gres=gpu:2                   #or --gres=gpu:1 if you only want to use half a node
+#SBATCH --gres=gpu:1                   #or --gres=gpu:1 if you only want to use half a node
 #SBATCH --output=output.txt
 #SBATCH --mail-type=begin        # send email when job begins
 #SBATCH --mail-type=end          # send email when job ends
