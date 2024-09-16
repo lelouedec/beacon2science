@@ -7,7 +7,7 @@ import torchvision.models as models
 from kornia.geometry.transform import translate
 
 
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 backwarp_tenGrid = {}
 import matplotlib.cm
