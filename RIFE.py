@@ -663,7 +663,7 @@ if __name__ == "__main__":
      
         if(len(losses1_v)>1):
             if(losses1_v[-1]+losses2_v[-1]<best_validation):
-                model.save_model("RIFE_diff2.pth")
+                model.save_model("RIFE_diff_final.pth")
                 best_validation = losses1_v[-1]+losses2_v[-1]
         else:
-            model.save_model("RIFE_diff2.pth")
+            model.save_model("RIFE_diff_final.pth")
