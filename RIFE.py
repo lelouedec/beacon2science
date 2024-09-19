@@ -525,7 +525,7 @@ if __name__ == "__main__":
                                             )
     
     writer = SummaryWriter(log_dir=config["logdir"])
-    best_validation = 2.0
+    best_validation = 10.0
     cmap = matplotlib.cm.get_cmap('gray')
 
     losses1 = []
