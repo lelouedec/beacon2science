@@ -2,7 +2,7 @@
     "load_models":false,
     "generator":"gan_gen_final.pth",
     "discriminator":"gan_disc_final.pth",
-    "lrgen": 1e-4,
+    "lrgen": 5e-5,
     "lrdisc":1e-7,
     "load_optim":false,
     "goptim":"gopti_ssim_final.pth",
