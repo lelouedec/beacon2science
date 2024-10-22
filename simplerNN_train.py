@@ -21,7 +21,7 @@ import matplotlib.cm as cm
 import unet2
 import json
 import sys 
-
+import RIFE
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -53,7 +53,7 @@ def train(config):
     if(torch.backends.mps.is_available()):
         device = torch.device("mps")
     elif(torch.cuda.is_available()):
-        device = torch.device("cuda:1")
+        device = torch.device("cuda:0")
 
     
     print("THIS WILL RUN ON DEVICE:", device)
@@ -62,13 +62,17 @@ def train(config):
     discriminator = ESRGAN.Discriminator(2,2,64,full_size=config["full_size"])
 
     if(config["load_models"]==True):
-        model.load_state_dict(torch.load(config["generator"],map_location=torch.device('cpu')))
-        discriminator.load_state_dict(torch.load(config["discriminator"],map_location=torch.device('cpu')))
+        dict_gen  = torch.load(config["generator"],map_location=torch.device('cpu'))
+        dict_disc = torch.load(config["discriminator"],map_location=torch.device('cpu'))
+        dict_gen = {key.replace("module.", ""): value for key, value in dict_gen.items()}
+        dict_disc = {key.replace("module.", ""): value for key, value in dict_disc.items()}
+        model.load_state_dict(dict_gen)
+        discriminator.load_state_dict(dict_disc)
 
 
-    #if(torch.cuda.device_count() >1):
-    #    model = torch.nn.DataParallel(model)
-    #    discriminator = torch.nn.DataParallel(discriminator)
+    if(torch.cuda.device_count() >1):
+       model = torch.nn.DataParallel(model)
+       discriminator = torch.nn.DataParallel(discriminator)
 
     model.to(device)
     discriminator.to(device)
@@ -76,8 +80,8 @@ def train(config):
     minibacth = config["minibacth"]
     full_size = config["full_size"]
 
-    dataset = b2s_dataset.FinalDataset(256,full_size,config["data_path"],True,False)
-    dataset_validation = b2s_dataset.FinalDataset(256,full_size,config["data_path"],False,True)
+    dataset = b2s_dataset.FinalDataset(256,full_size,config["data_path"],True,False,small=False)
+    dataset_validation = b2s_dataset.FinalDataset(256,full_size,config["data_path"],False,True,small=False)
 
     # dataset = b2s_dataset.FinalDataset(256,full_size,"/Volumes/Data_drive/",True,False)
     # dataset_validation = b2s_dataset.FinalDataset(256,full_size,"/Volumes/Data_drive/",False,True)
@@ -107,27 +111,27 @@ def train(config):
         g_optimizer.load_state_dict(torch.load(config["goptim"],map_location=torch.device('cpu')))
         d_optimizer.load_state_dict(torch.load(config["doptim"],map_location=torch.device('cpu')))
     
-    g_scheduler = optim.lr_scheduler.ReduceLROnPlateau(g_optimizer, patience=5)
-    d_scheduler = optim.lr_scheduler.ReduceLROnPlateau(d_optimizer, patience=5)
-
-
+    
 
     adversarial_looser = nn.BCEWithLogitsLoss()
     if(config["pxl_loss"]=="SSIM"):
-        pixel_looser  = kornia.losses.MS_SSIMLoss(reduction='none').to(device)
+       pixel_looser  = kornia.losses.MS_SSIMLoss(reduction='none').to(device)
     elif(config["pxl_loss"]=="MSE"):
-        pixel_looser = nn.MSELoss(reduction="mean")
+       pixel_looser = nn.MSELoss(reduction="mean")
     elif(config["pxl_loss"]=="L1"):
-        pixel_looser = nn.L1Loss(reduction="mean")
-   
+       pixel_looser = nn.L1Loss(reduction="mean")
+    
 
     # content_looser = ESRGAN.ContentLoss("vgg19",False,1,None,["features.34"],[0.485, 0.456, 0.406],[0.229, 0.224, 0.225]).to(device)
 
     pixel_weight = config["pixel_weight"]
     adversarial_weight = config["adversarial_weight"]
     diff_weight = config["diff_weight"]
+        
     if(config["warmupiter"]):
         warmupiter = int(dataset.__len__()*4/minibacth)
+    else:
+        warmupiter = 0
 
 
     g_losses  = []
@@ -160,7 +164,6 @@ def train(config):
             LR2 = data["LR2"].to(device)
             HR1 = data["HR1"].to(device)
             HR2 = data["HR2"].to(device)
-            distances = data["distances"].to(device)
 
 
             D1  = data["diff1"].to(device)
@@ -187,9 +190,7 @@ def train(config):
 
             
             loss =  pixel_weight*((0.5*pixel_looser(sr1.float(),HR1)+0.5*pixel_looser(sr2.float(),HR2))).mean()
-            if(config["distreg"]):
-                loss = loss + (distances-sr1.float() + distances-sr2.float()).sum()
-                
+           
                 
             if(config["diff_loss"]):
                 loss = loss + diff_weight*(diff_loss).mean() 
@@ -199,7 +200,7 @@ def train(config):
                 gt_output = discriminator(torch.cat([HR1,HR2],1))
                 sr_output = discriminator(sr)
                 
-                adversarial_loss=  adversarial_looser(sr_output-gt_output.mean(0,keepdim=True), real_label) 
+                adversarial_loss =  adversarial_looser(sr_output-gt_output.mean(0,keepdim=True), real_label) 
                 loss+= adversarial_weight*adversarial_loss
 
             loss.backward()
@@ -238,7 +239,7 @@ def train(config):
                 LR2 = data["LR2"].to(device)
                 HR1 = data["HR1"].to(device)
                 HR2 = data["HR2"].to(device)
-                distances = data["distances"].to(device)
+                
 
 
                 D1  = data["diff1"].to(device)
@@ -265,10 +266,7 @@ def train(config):
                         
 
                 loss =  pixel_weight*((0.5*pixel_looser(sr1.float(),HR1)+0.5*pixel_looser(sr2.float(),HR2))).mean()
-                
-                if(config["distreg"]):
-                    loss = loss + (distances-sr1.float() + distances-sr2.float()).sum()
-                
+           
                 
                 if(config["diff_loss"]):
                     loss = loss + diff_weight*(diff_loss).mean() 
@@ -277,12 +275,10 @@ def train(config):
                 g_loss_validation += loss.item()
                 a_loss_validation += adversarial_loss.item()
 
-            # scheduler.step(g_loss_validation/dataset_validation.__len__())
             g_losses_validation.append(g_loss_validation/dataset_validation.__len__())
             a_losses_validation.append(a_loss_validation/dataset_validation.__len__())
 
-        #g_scheduler.step(g_loss_validation/dataset_validation.__len__())
-        #d_scheduler.step(g_loss_validation/dataset_validation.__len__())
+       
         
 
 
@@ -303,17 +299,29 @@ def train(config):
 
         if(len(g_losses_validation)>1):
             if(g_losses_validation[-1]<best_validation):
-                torch.save(model.module.state_dict(), config["generator"])
-                torch.save(discriminator.module.state_dict(),config["discriminator"])
-                torch.save(g_optimizer.state_dict(),config["goptim"])
-                torch.save(d_optimizer.state_dict(),config["doptim"])
+                if(torch.cuda.device_count() >1):
+                    torch.save(model.module.state_dict(), config["generator"])
+                    torch.save(discriminator.module.state_dict(),config["discriminator"])
+                    torch.save(g_optimizer.state_dict(),config["goptim"])
+                    torch.save(d_optimizer.state_dict(),config["doptim"])
+                else:
+                    torch.save(model.state_dict(), config["generator"])
+                    torch.save(discriminator.state_dict(),config["discriminator"])
+                    torch.save(g_optimizer.state_dict(),config["goptim"])
+                    torch.save(d_optimizer.state_dict(),config["doptim"])
                 best_validation = g_losses_validation[-1]
         else:
-            torch.save(model.module.state_dict(), config["generator"])
-            torch.save(discriminator.module.state_dict(),config["discriminator"])
-            torch.save(g_optimizer.state_dict(),config["goptim"])
-            torch.save(d_optimizer.state_dict(),config["doptim"])
-
+            if(g_losses_validation[-1]<best_validation):
+                if(torch.cuda.device_count() >1):
+                    torch.save(model.module.state_dict(), config["generator"])
+                    torch.save(discriminator.module.state_dict(),config["discriminator"])
+                    torch.save(g_optimizer.state_dict(),config["goptim"])
+                    torch.save(d_optimizer.state_dict(),config["doptim"])
+                else:
+                    torch.save(model.state_dict(), config["generator"])
+                    torch.save(discriminator.state_dict(),config["discriminator"])
+                    torch.save(g_optimizer.state_dict(),config["goptim"])
+                    torch.save(d_optimizer.state_dict(),config["doptim"])
 
 
 if __name__ == "__main__":
