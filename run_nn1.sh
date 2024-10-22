@@ -22,4 +22,4 @@ conda activate gan
 conda list 
 
 
-python simplerNN_train.py config_NN1.json
+python simplerNN_train.py configs/config_ssim_vsc.json
