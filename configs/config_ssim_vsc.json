@@ -19,5 +19,5 @@
     "endepoch":2000,
     "diff_loss":false,
     "logdir":"runs/ssim_final_vsc",
-    "data_path":"../Dataset/training/" 
+    "data_path":"/gpfs/data/fs72241/lelouedecj/Dataset/training/" 
 }
