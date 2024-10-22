@@ -1,0 +1,23 @@
+{
+    "load_models":false,
+    "generator":"gan_gen_final.pth",
+    "discriminator":"gan_disc_final.pth",
+    "lrgen": 1e-4,
+    "lrdisc":1e-7,
+    "load_optim":false,
+    "goptim":"gopti_ssim_final.pth",
+    "doptim":"dopti_ssim_final.pth",
+    "pxl_loss":"SSIM",
+    "pixel_weight":1,
+    "adversarial_weight":0.0005,
+    "warmupiter":true,
+    "diff_weight":20,
+    "minibacth": 12,
+    "full_size": 512,
+    "best_validation":1.75,
+    "startepoch":1500,
+    "endepoch":2000,
+    "diff_loss":false,
+    "logdir":"runs/ssim_final_vsc",
+    "data_path":"../Dataset/training/" 
+}
