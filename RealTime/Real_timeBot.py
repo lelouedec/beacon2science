@@ -9,10 +9,6 @@ class MyClient(discord.Client):
         print('Logged on as', self.user)
 
 
-    async def check_dst(self):
-        while True:
-            await asyncio.sleep(30)
-            print("checked")
 
     async def on_message(self, message):
         global messages
@@ -26,6 +22,7 @@ class MyClient(discord.Client):
                 await message.channel.send("Coming right up")
                 data_pipeline.run_all()
                 RT_b2s.enhance_latest()
+                asyncio.sleep(30)
                 await message.channel.send(file=discord.File('latest.png'))
               
         else:
