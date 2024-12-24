@@ -1,7 +1,7 @@
 import discord
 import asyncio
 import RT_b2s
-
+import data_pipeline
 
 class MyClient(discord.Client):
     
@@ -24,6 +24,7 @@ class MyClient(discord.Client):
         if isinstance(message.channel, discord.channel.DMChannel):
             if(message.content =="Marvin enhance"):
                 await message.channel.send("Coming right up")
+                data_pipeline.run_all()
                 RT_b2s.enhance_latest()
                 await message.channel.send(file=discord.File('latest.png'))
               

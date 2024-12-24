@@ -277,9 +277,8 @@ def create_l2(d,type="beacon",typeset="forecast",returned=False,bgtype="median")
         return datas,headers 
     
 
-
-if __name__ == "__main__":
-    #### Define days you want to download + add 5 days for background
+def run_all():
+     #### Define days you want to download + add 5 days for background
     dates = ["20240505","20240506","20240507","20240508","20240509","20240510"]
     #### or get last x days
     dates = get_x_last_days(7)
@@ -301,3 +300,5 @@ if __name__ == "__main__":
                   typeset="forecast",
                   returned=False, ## in case you want to get L2 arrays returned
                   bgtype="median") ## what kind of background
+if __name__ == "__main__":
+   run_all()
