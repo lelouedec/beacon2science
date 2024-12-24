@@ -15,7 +15,7 @@ from astropy import units as u
 from skimage.transform import resize, rotate
 
 import matplotlib
-matplotlib.rcParams['backend'] = 'Qt5Agg' 
+# matplotlib.rcParams['backend'] = 'Qt5Agg' 
 from datetime import datetime,timedelta
 import numpy as np
 from skimage import exposure,filters
