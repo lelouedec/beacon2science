@@ -203,107 +203,110 @@ def processjplot(cuts,dates,elongations,medianed=False):
 
     return cuts,vmin,vmax,elongations
 
-typeset= "forecast"
-type = "beacon"
-device = torch.device("cpu")
-if(torch.backends.mps.is_available()):
-    device = torch.device("mps")
-elif(torch.cuda.is_available()):
-    device = torch.device("cuda:0")
+
+def enhance_latest():
+    typeset= "forecast"
+    type = "beacon"
+    device = torch.device("cpu")
+    if(torch.backends.mps.is_available()):
+        device = torch.device("mps")
+    elif(torch.cuda.is_available()):
+        device = torch.device("cuda:0")
 
 
 
 
-dates = data_pipeline.get_x_last_days(7)
-dates = dates[5:]
+    dates = data_pipeline.get_x_last_days(7)
+    dates = dates[5:]
 
-datas   = []
-headers = []
-for d in dates:
-    path = "L2_data/"+typeset+"/"+type+"/"+d+"/*"
-    files = natsorted(glob.glob(path))
-    for f in files:
-        filea  = fits.open(f)
-        data   = filea[0].data
-        header = filea[0].header
-        filea.close()
-        datas.append(data)
-        headers.append(header)
+    datas   = []
+    headers = []
+    for d in dates:
+        path = "L2_data/"+typeset+"/"+type+"/"+d+"/*"
+        files = natsorted(glob.glob(path))
+        for f in files:
+            filea  = fits.open(f)
+            data   = filea[0].data
+            header = filea[0].header
+            filea.close()
+            datas.append(data)
+            headers.append(header)
 
-maxgap  = -3.5
-cadence = 120
+    maxgap  = -3.5
+    cadence = 120
 
-diffs = []
-nonprocesseddiffs = []
-headers2= []
-for i in range(1,len(datas)-1):
-    time1 = datetime.strptime(headers[i-1]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
-    time2 = datetime.strptime(headers[i]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
+    diffs = []
+    nonprocesseddiffs = []
+    headers2= []
+    for i in range(1,len(datas)-1):
+        time1 = datetime.strptime(headers[i-1]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
+        time2 = datetime.strptime(headers[i]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
 
-    if( np.abs((time2-time1).total_seconds()/60.0)<= -maxgap * cadence and np.abs((time2-time1).total_seconds()/60.0) >= (cadence-5)):
+        if( np.abs((time2-time1).total_seconds()/60.0)<= -maxgap * cadence and np.abs((time2-time1).total_seconds()/60.0) >= (cadence-5)):
 
-        im1 = np.float32(datas[i-1])
-        nan_mask = np.isnan(im1)
-        im1[nan_mask] = np.array(np.interp(np.flatnonzero(nan_mask), np.flatnonzero(~nan_mask), im1[~nan_mask]))
-
-
-        im2 = np.float32(datas[i])
-        nan_mask = np.isnan(im2)
-        im2[nan_mask] = np.array(np.interp(np.flatnonzero(nan_mask), np.flatnonzero(~nan_mask), im2[~nan_mask]))
-
-        hdr = headers[i-1]
-        hdr2 = headers[i]
+            im1 = np.float32(datas[i-1])
+            nan_mask = np.isnan(im1)
+            im1[nan_mask] = np.array(np.interp(np.flatnonzero(nan_mask), np.flatnonzero(~nan_mask), im1[~nan_mask]))
 
 
-        center = hdr2['crpix1']-1, hdr2['crpix2']-1
-        wcs = WCS(hdr2,key='A')
-        center_prev = wcs.all_world2pix(hdr["crval1a"],hdr["crval2a"], 0)
-        shift_arr = np.array([center_prev[1]-center[1],center_prev[0]-center[0]])
-        shift_arr = shift_arr
+            im2 = np.float32(datas[i])
+            nan_mask = np.isnan(im2)
+            im2[nan_mask] = np.array(np.interp(np.flatnonzero(nan_mask), np.flatnonzero(~nan_mask), im2[~nan_mask]))
+
+            hdr = headers[i-1]
+            hdr2 = headers[i]
 
 
-        diff = np.float32(im2-shift(im1,shift_arr, mode='nearest'))
-        nonprocesseddiffs.append(diff.copy())
-
-        diff = exposure.equalize_adapthist(normalize(diff),clip_limit=0.02,kernel_size=diff.shape[0]//10)
-
-        diffs.append(diff)
-        headers2.append(hdr2)
-
-model = unet2.ResUnet(1,full_size=512)
-dict_gen  = torch.load("gan_gen_l13.pth",map_location=torch.device('cpu'))
-model.load_state_dict(dict_gen)
-model.to(device)
-
-enhanced = []
-with torch.no_grad():
-    for diff in diffs:
+            center = hdr2['crpix1']-1, hdr2['crpix2']-1
+            wcs = WCS(hdr2,key='A')
+            center_prev = wcs.all_world2pix(hdr["crval1a"],hdr["crval2a"], 0)
+            shift_arr = np.array([center_prev[1]-center[1],center_prev[0]-center[0]])
+            shift_arr = shift_arr
 
 
-        D2 = torch.tensor(diff).float().unsqueeze(0).unsqueeze(1).to(device)
+            diff = np.float32(im2-shift(im1,shift_arr, mode='nearest'))
+            nonprocesseddiffs.append(diff.copy())
 
-        sr = model(D2,None)
-        sr = sr[0,0,:,:].cpu().numpy()
+            diff = exposure.equalize_adapthist(normalize(diff),clip_limit=0.02,kernel_size=diff.shape[0]//10)
 
-        enhanced.append(sr)
+            diffs.append(diff)
+            headers2.append(hdr2)
+
+    model = unet2.ResUnet(1,full_size=512)
+    dict_gen  = torch.load("gan_gen_l13.pth",map_location=torch.device('cpu'))
+    model.load_state_dict(dict_gen)
+    model.to(device)
+
+    enhanced = []
+    with torch.no_grad():
+        for diff in diffs:
 
 
-cuts_beacon,dates_beacon,elongations_beacon = create_jplot_from_differences(nonprocesseddiffs,headers2,120)
-cuts,dates,elongations = create_enhanced_jplots(enhanced,headers2,120)
+            D2 = torch.tensor(diff).float().unsqueeze(0).unsqueeze(1).to(device)
+
+            sr = model(D2,None)
+            sr = sr[0,0,:,:].cpu().numpy()
+
+            enhanced.append(sr)
 
 
-cuts,vmin,vmax,elongations_beacon = processjplot(cuts,dates,elongations,True)
-cuts_beacon,vmin_beacon,vmax_beacon,elongations = processjplot(cuts_beacon,dates_beacon,elongations_beacon,True)
+    cuts_beacon,dates_beacon,elongations_beacon = create_jplot_from_differences(nonprocesseddiffs,headers2,120)
+    cuts,dates,elongations = create_enhanced_jplots(enhanced,headers2,120)
+
+
+    cuts,vmin,vmax,elongations_beacon = processjplot(cuts,dates,elongations,False)
+    cuts_beacon,vmin_beacon,vmax_beacon,elongations = processjplot(cuts_beacon,dates_beacon,elongations_beacon,False)
 
 
 
-fig,ax = plt.subplots(2,1,figsize=(20,10))
-ax[0].imshow(cuts_beacon, cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[dates_beacon[0], dates_beacon[-1],elongations_beacon[0] , elongations_beacon[1]],vmin=vmin_beacon,vmax=vmax_beacon)
-ax[0].title.set_text('Beacon JPlot')
-ax[1].imshow(cuts, cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[dates[0], dates[-1],elongations[0] , elongations[1]],vmin=vmin,vmax=vmax)
-ax[1].title.set_text('Enhanced Beacon JPlot')
-now  = datetime.now()
-plt.savefig(str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+".png")
+    fig,ax = plt.subplots(2,1,figsize=(20,10))
+    ax[0].imshow(cuts_beacon, cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[dates_beacon[0], dates_beacon[-1],elongations_beacon[0] , elongations_beacon[1]],vmin=vmin_beacon,vmax=vmax_beacon)
+    ax[0].title.set_text('Beacon JPlot')
+    ax[1].imshow(cuts, cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[dates[0], dates[-1],elongations[0] , elongations[1]],vmin=vmin,vmax=vmax)
+    ax[1].title.set_text('Enhanced Beacon JPlot')
+    now  = datetime.now()
+    # plt.savefig(str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+".png")
+    plt.savefig("latest.png")
 
 
         
