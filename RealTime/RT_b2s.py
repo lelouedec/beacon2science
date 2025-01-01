@@ -267,13 +267,14 @@ def enhance_latest():
             diff = np.float32(im2-shift(im1,shift_arr, mode='nearest'))
             nonprocesseddiffs.append(diff.copy())
 
-            diff = exposure.equalize_adapthist(normalize(diff),clip_limit=0.02,kernel_size=diff.shape[0]//10)
+            diff = diff
+            # diff = exposure.equalize_adapthist(,clip_limit=0.02,kernel_size=diff.shape[0]//10)
 
             diffs.append(diff)
             headers2.append(hdr2)
 
     model = unet2.ResUnet(1,full_size=512)
-    dict_gen  = torch.load("gan_gen_l13.pth",map_location=torch.device('cpu'))
+    dict_gen  = torch.load("gan_gen_l14.pth",map_location=torch.device('cpu'))
     model.load_state_dict(dict_gen)
     model.to(device)
 
