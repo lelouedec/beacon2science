@@ -267,8 +267,8 @@ def enhance_latest():
             diff = np.float32(im2-shift(im1,shift_arr, mode='nearest'))
             nonprocesseddiffs.append(diff.copy())
 
-            diff = diff
-            # diff = exposure.equalize_adapthist(,clip_limit=0.02,kernel_size=diff.shape[0]//10)
+            diff = normalize(diff)
+            # diff = exposure.equalize_adapthist(diff,clip_limit=0.02,kernel_size=diff.shape[0]//10)
 
             diffs.append(diff)
             headers2.append(hdr2)
