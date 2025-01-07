@@ -20,9 +20,9 @@ class MyClient(discord.Client):
         if isinstance(message.channel, discord.channel.DMChannel):
             if(message.content =="Marvin enhance"):
                 await message.channel.send("Coming right up")
-                data_pipeline.run_all()
-                RT_b2s.enhance_latest()
-                asyncio.sleep(30)
+                # data_pipeline.run_all()
+                # RT_b2s.enhance_latest()
+                # asyncio.sleep(30)
                 await message.channel.send(file=discord.File('latest.png'))
               
         else:
