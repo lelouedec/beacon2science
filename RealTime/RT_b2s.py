@@ -311,3 +311,5 @@ def enhance_latest():
 
 
         
+if __name__ == '__main__':	
+    enhance_latest()
