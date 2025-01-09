@@ -311,5 +311,6 @@ def enhance_latest():
 
 
         
-if __name__ == '__main__':	
+if __name__ == '__main__':
+    data_pipeline.run_all()	
     enhance_latest()
