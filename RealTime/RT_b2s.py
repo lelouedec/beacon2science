@@ -291,7 +291,7 @@ def enhance_latest():
             enhanced.append(sr)
 
     for i in range(0,len(enhanced)):
-        img = Image.fromarray(enhanced[i]).convert("L")
+        img = Image.fromarray(enhanced[i]*255.0).convert("L")
         img.save("tmp/"+str(i)+".png")
     
     os.system("ffmpeg -y -framerate 30 -i tmp/%d.png -pix_fmt yuv420p hi1_current.mp4")
