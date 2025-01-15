@@ -10,7 +10,7 @@ from sunpy.coordinates import Helioprojective
 from sunpy.coordinates.ephemeris import get_horizons_coord
 from astropy.coordinates import SkyCoord
 from astropy import units as u
-
+from PIL import Image
 
 from skimage.transform import resize, rotate
 
@@ -24,7 +24,7 @@ import sys
 sys.path.insert(0, '..')
 import unet2
 import functions
-
+import os 
 
 def normalize(img,rangev=2.5):      
     vmax = np.median(img)+rangev*np.std(img)
@@ -289,6 +289,11 @@ def enhance_latest():
             sr = sr[0,0,:,:].cpu().numpy()
 
             enhanced.append(sr)
+
+    for i in range(0,len(enhanced)):
+        Image.fromarray(enhanced[i]).save("tmp/"+str(i)+".png")
+    
+    os.system("ffmpeg -y -framerate 30 -i tmp/%d.png -c:v libx264 -pix_fmt yuv420p hi1_current.mp4")
 
 
     cuts_beacon,dates_beacon,elongations_beacon = create_jplot_from_differences(nonprocesseddiffs,headers2,120)
