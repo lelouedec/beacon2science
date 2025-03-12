@@ -22,7 +22,7 @@ from skimage import exposure,filters
 import torch
 import sys
 sys.path.insert(0, '..')
-import unet2
+import models.unet2 as unet2
 import functions
 import os 
 

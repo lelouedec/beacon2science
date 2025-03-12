@@ -1,13 +1,13 @@
 import torch
-from ESRGAN import *
+from models.ESRGAN import *
 import torch
 
 import numpy as np
 from PIL import Image
 import torchvision
 torchvision.disable_beta_transforms_warning()
-import ESRGAN
-import unet2
+import models.ESRGAN as ESRGAN
+import models.unet2 as unet2
 
 
 from natsort import natsorted

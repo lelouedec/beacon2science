@@ -1,5 +1,5 @@
 import torch
-from ESRGAN import *
+from models.ESRGAN import *
 import torch
 from torch import nn,optim
 # from attention import * 
@@ -9,7 +9,7 @@ import numpy as np
 import torchvision
 torchvision.disable_beta_transforms_warning()
 from kornia.geometry.transform import translate
-import ESRGAN
+import models.ESRGAN as ESRGAN
 from math import log10, sqrt
 import cv2
 # import Nextlevel
@@ -18,7 +18,7 @@ import cv2
 import kornia
 from kornia.enhance.equalization import equalize_clahe
 import matplotlib.cm as cm
-import unet2
+import models.unet2 as unet2
 import json
 import sys 
 
