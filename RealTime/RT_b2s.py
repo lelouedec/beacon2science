@@ -294,7 +294,17 @@ def enhance_latest():
         img = Image.fromarray(enhanced[i]*255.0).convert("L")
         img.save("tmp/"+str(i)+".png")
     
-    os.system("ffmpeg -y -framerate 30 -i tmp/%d.png -pix_fmt yuv420p hi1_current.mp4")
+    os.system("ffmpeg -y -framerate 5 -i tmp/%d.png -pix_fmt rgb24 hi1_current.mp4")
+
+    os.system("rm -rf tmp/*")
+
+    for i in range(0,len(diffs)):
+        img = Image.fromarray(diffs[i]*255.0).convert("L")
+        img.save("tmp/"+str(i)+".png")
+    
+    os.system("ffmpeg -y -framerate 5 -i tmp/%d.png -pix_fmt rgb24 hi1_beacon_current.mp4")
+
+    os.system("rm -rf tmp/*")
 
 
     cuts_beacon,dates_beacon,elongations_beacon = create_jplot_from_differences(nonprocesseddiffs,headers2,120)
