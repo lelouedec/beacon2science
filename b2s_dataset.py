@@ -42,12 +42,9 @@ class FinalDataset(Dataset):
         self.validation = validation
        
        
-        if(training or validation):
-            with open("dataset_train_final.json", "r") as final:
-                self.data_json =  json.load(final)
-        else:
-            with open("dataset_test_final.json", "r") as final:
-                self.data_json =  json.load(final)
+        with open("dataset_train_final.json", "r") as final:
+            self.data_json =  json.load(final)
+      
         
         random.seed(42)
         np.random.seed(seed=42)
@@ -83,8 +80,6 @@ class FinalDataset(Dataset):
 
     def __getitem__(self, index):
         
-        beacon_path= "/media/lelouedec/DATA/L2_data/"
-        # beacon_path= "/media/lelouedec/DATA/Reduced/"
         if(self.training ==False and self.validation==False):
             typeset= "Test"
         else:
@@ -103,7 +98,7 @@ class FinalDataset(Dataset):
         s2 = np.asarray(fits.open(self.path+typeset+"/science/"+self.data_json[index]["s2"].split('T')[0]+'/'+self.data_json[index]["s2"])[0].data)
 
         s2_h = fits.open(self.path+typeset+"/science/"+self.data_json[index]["s2"].split('T')[0]+'/'+self.data_json[index]["s2"])[0].header
-        b2_h = fits.open(self.path+typeset+"/"+self.data_json[index]["b2"].split('T')[0]+'/beacon/'+self.data_json[index]["b2"])[0].header
+        b2_h = fits.open(self.path+typeset+"/beacon/"+self.data_json[index]["b2"].split('T')[0]+'/'+self.data_json[index]["b2"])[0].header
         
        
       

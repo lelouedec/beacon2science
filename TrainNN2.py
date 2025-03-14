@@ -9,7 +9,7 @@ from kornia import filters
 
 
 device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
-print(device)
+
 backwarp_tenGrid = {}
 import matplotlib.cm
 
@@ -483,12 +483,9 @@ if __name__ == "__main__":
         model.load_model(config["model_name"])
     
 
-    if(config["cluster"]):
-        dataset = Sequences_dataset_rdifs.FinalDatasetSequences(config["full_size"],"/gpfs/data/fs72241/lelouedecj/Dataset/",training=True,validation=False)
-        dataset_validation = Sequences_dataset_rdifs.FinalDatasetSequences(config["full_size"],"/gpfs/data/fs72241/lelouedecj/Dataset/",training=False,validation=True)
-    else:
-        dataset = Sequences_dataset_rdifs.FinalDatasetSequences(512,"../Dataset/",training=True,validation=False)
-        dataset_validation = Sequences_dataset_rdifs.FinalDatasetSequences(512,"../Dataset/",training=False,validation=True)
+   
+    dataset = Sequences_dataset_rdifs.FinalDatasetSequences(512,config["data_path"],training=True,validation=False)
+    dataset_validation = Sequences_dataset_rdifs.FinalDatasetSequences(512,config["data_path"],training=False,validation=True)
 
    
  

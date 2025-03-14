@@ -7,8 +7,8 @@ import numpy as np
 from datetime import datetime
 
 
-# folder_data = "./WunderbarDataset/"
-folder_data = "./HI2_data/"
+folder_data = "./WunderbarDataset/"
+# folder_data = "./HI2_data/"
 
 global_type = "science"
 global_urls1 = None

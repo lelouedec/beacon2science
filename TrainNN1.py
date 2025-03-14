@@ -1,28 +1,17 @@
 import torch
-from ESRGAN import *
+from models.ESRGAN import *
 import torch
 from torch import nn,optim
-# from attention import * 
 import b2s_dataset
 import matplotlib.pyplot as plt 
 import numpy as np 
 import torchvision
 torchvision.disable_beta_transforms_warning()
-from kornia.geometry.transform import translate
-import ESRGAN
 from math import log10, sqrt
-import cv2
-# import Nextlevel
-#https://wichtelmania.com/en/w/CcESsMijwlNn4ZCcEWiTLo6bL410
-#from backbones_unet.model.unet import Unet
 import kornia
-from kornia.enhance.equalization import equalize_clahe
-import matplotlib.cm as cm
-import unet2
+import models.unet2 as unet2
 import json
 import sys 
-import RIFE
-from kornia import filters
 
 from torch.utils.tensorboard import SummaryWriter
 
@@ -47,18 +36,6 @@ def train_discriminator(discriminator,data,sr,adversarial_looser,device,target):
     return adversarial_loss 
 
 
-def normalize(img):
-    vmax = torch.median(img)+2.5*torch.std(img)
-    vmin = torch.median(img)-2.5*torch.std(img)
-
-    img[img>vmax] = vmax
-    img[img<vmin] = vmin
-
-    img = (img-vmin)/(vmax-vmin)
-
-    return img 
-
-
 
 def train(config):
     device = torch.device("cpu")
@@ -72,7 +49,7 @@ def train(config):
 
     model = unet2.ResUnet(1,full_size=config["full_size"])
     
-    discriminator = ESRGAN.Discriminator(1,1,64,full_size=config["full_size"])
+    discriminator = Discriminator(1,1,64,full_size=config["full_size"])
 
     if(config["load_models"]==True):
         dict_gen  = torch.load(config["generator"],map_location=torch.device('cpu'))
@@ -96,8 +73,6 @@ def train(config):
     dataset = b2s_dataset.FinalDataset(256,full_size,config["data_path"],True,False,small=False)
     dataset_validation = b2s_dataset.FinalDataset(256,full_size,config["data_path"],False,True,small=False)
 
-    # dataset = b2s_dataset.FinalDataset(256,full_size,"/Volumes/Data_drive/",True,False)
-    # dataset_validation = b2s_dataset.FinalDataset(256,full_size,"/Volumes/Data_drive/",False,True)
 
     dataloader = torch.utils.data.DataLoader(
                                                 dataset,
