@@ -25,6 +25,8 @@ import torch
 import sys
 sys.path.insert(0, '..')
 import models.unet2 as unet2
+import models.RIFE as RIFE
+
 import functions
 import os 
 
@@ -240,6 +242,7 @@ def enhance_latest():
     diffs = []
     nonprocesseddiffs = []
     headers2= []
+    times = []
     for i in range(1,len(datas)-1):
         time1 = datetime.strptime(headers[i-1]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
         time2 = datetime.strptime(headers[i]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
@@ -274,9 +277,37 @@ def enhance_latest():
 
             diffs.append(diff)
             headers2.append(hdr2)
+            times.append(time2)
+
+    for i in range(0,len(diffs)):
+        img = Image.fromarray(np.flipud(diffs[i])*255.0).convert("L")
+        draw = ImageDraw.Draw(img)
+        font = ImageFont.truetype("SourceSansPro-Bold.otf",17)
+        draw.text((10, 20),headers2[i]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
+        img.save("tmp/"+str(i)+".png")
+    
+    os.system("ffmpeg -y -framerate 5 -i tmp/%d.png -pix_fmt rgb24 hi1_beacon_current.mp4")
+    os.system("rm -rf tmp/*")
+
+
+
+    cuts_beacon,dates_beacon,elongations_beacon = create_jplot_from_differences(nonprocesseddiffs,headers2,120)
+    dict_beacon = {
+            'data':cuts_beacon,
+            'dates':dates_beacon,
+            'elongations':elongations_beacon
+    }
+    pickle.dump(dict_beacon, open("latest_jplot_beacon.p", "wb"))  # save it into a file named save.p
+
+
+    cuts_beacon,vmin_beacon,vmax_beacon,elongations_beacon = processjplot(cuts_beacon,dates_beacon,elongations_beacon,False)
+
+    ###########################################
+    ###########################################
+    ### We apply the Fist neural network 
 
     model = unet2.ResUnet(1,full_size=512)
-    dict_gen  = torch.load("gan_gen_l14.pth",map_location=torch.device('cpu'))
+    dict_gen  = torch.load("PAPERNN1.pth",map_location=torch.device('cpu'))
     model.load_state_dict(dict_gen)
     model.to(device)
 
@@ -300,35 +331,122 @@ def enhance_latest():
         img.save("tmp/"+str(i)+".png")
     
     os.system("ffmpeg -y -framerate 5 -i tmp/%d.png -pix_fmt rgb24 hi1_current.mp4")
-
     os.system("rm -rf tmp/*")
 
-    for i in range(0,len(diffs)):
-        img = Image.fromarray(np.flipud(diffs[i])*255.0).convert("L")
+
+    cuts,dates,elongations = create_enhanced_jplots(enhanced,headers2,120)
+    dict_enhanced = {
+            'data':cuts,
+            'dates':dates,
+            'elongations':elongations
+    }
+    pickle.dump(dict_enhanced, open("latest_jplot_enhance.p", "wb"))  # save it into a file named save.p
+
+    cuts,vmin,vmax,elongations = processjplot(cuts,dates,elongations,False)
+
+    
+    ###########################################
+    ###########################################
+    ### We apply the second neural network 
+    model = RIFE.Model()
+    model.flownet.to(device)
+
+    model.load_model("PAPER_NN2.pth")
+
+    interpolated_rdifs = []
+    interpolated_headers = []
+
+    with torch.no_grad():
+        for p in range(0,len(enhanced)-1,1):
+            
+
+            time1 = times[p]
+            time2 = times[p+1]
+            diff_time = (time2-time1).total_seconds()
+
+            if(diff_time/3600<=4.0):
+                
+                data1 = enhanced[p]
+                data2 = enhanced[p+1]
+
+                if(time1.year<=2015):
+                    data1 = np.fliplr(data1)
+                    data2 = np.fliplr(data2)
+
+
+                S1 = torch.tensor(data1.copy()).float().unsqueeze(0).unsqueeze(1).to(device)
+                S2 = torch.tensor(data2.copy()).float().unsqueeze(0).unsqueeze(1).to(device)
+
+
+                output1 = model.inference(S1,S2,timestep=torch.tensor([0.33]))
+                output2 = model.inference(S1,S2,timestep=torch.tensor([0.66]))
+            
+
+                output1 = output1[0,0,:,:].cpu().numpy()
+                output2 = output2[0,0,:,:].cpu().numpy()
+
+               
+                output1 = exposure.match_histograms(output1, data1)
+                output2 = exposure.match_histograms(output2, data1)
+
+                if(time1.year<=2015):
+                    data1 = np.fliplr(data1)
+                    data2 = np.fliplr(data2)
+                    output1 = np.fliplr(output1)
+                    output2 = np.fliplr(output2)
+
+                header1 = headers2[p]
+                header2 = headers2[p+1]
+
+                hdr3 = header2.copy()
+                hdr4 = header2.copy()
+
+                timeout1 = time1+timedelta(minutes=40)
+                timeout2 = time1+timedelta(minutes=80)
+                
+                hdr3["DATE-END"] = timeout1.strftime('%Y-%m-%dT%H:%M:%S')+".000"
+                hdr4["DATE-END"] = timeout2.strftime('%Y-%m-%dT%H:%M:%S')+".000"
+
+
+                interpolated_rdifs = interpolated_rdifs + [data1,output1,output2]
+                interpolated_headers = interpolated_headers + [header1,hdr3,hdr4]
+
+
+    for i in range(0,len(interpolated_rdifs)):
+        img = Image.fromarray(np.flipud(interpolated_rdifs[i])*255.0).convert("L")
         draw = ImageDraw.Draw(img)
-        font = ImageFont.truetype("SourceSansPro-Bold.otf",17)
-        draw.text((10, 20),headers2[i]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
+        font = ImageFont.truetype("SourceSansPro-Bold.otf",35)
+        draw.text((10, 20),interpolated_headers[i]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
         img.save("tmp/"+str(i)+".png")
     
-    os.system("ffmpeg -y -framerate 5 -i tmp/%d.png -pix_fmt rgb24 hi1_beacon_current.mp4")
-
+    os.system("ffmpeg -y -framerate 5 -i tmp/%d.png -pix_fmt rgb24 hi1_current_interpolated.mp4")
     os.system("rm -rf tmp/*")
 
+                
+    cuts_interpolated,dates_interpolated,elongations_interpolated = create_enhanced_jplots(interpolated_rdifs,interpolated_headers,40)
+    dict_interpolated = {
+            'data':cuts_interpolated,
+            'dates':dates_interpolated,
+            'elongations':elongations_interpolated
+    }
+    pickle.dump(dict_interpolated, open("latest_jplot_enhance.p", "wb"))  # save it into a file named save.p
 
-    cuts_beacon,dates_beacon,elongations_beacon = create_jplot_from_differences(nonprocesseddiffs,headers2,120)
-    cuts,dates,elongations = create_enhanced_jplots(enhanced,headers2,120)
-
-
-    cuts,vmin,vmax,elongations_beacon = processjplot(cuts,dates,elongations,False)
-    cuts_beacon,vmin_beacon,vmax_beacon,elongations = processjplot(cuts_beacon,dates_beacon,elongations_beacon,False)
+    cuts_interpolated,vmin_interpolated,vmax_interpolated,elongations_interpolated = processjplot(cuts_interpolated,dates_interpolated,elongations_interpolated,False)
+    
+    
 
 
 
-    fig,ax = plt.subplots(2,1,figsize=(20,10))
+
+
+
+    fig,ax = plt.subplots(3,1,figsize=(20,10))
     ax[0].imshow(cuts_beacon, cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[dates_beacon[0], dates_beacon[-1],elongations_beacon[0] , elongations_beacon[1]],vmin=vmin_beacon,vmax=vmax_beacon)
     ax[0].title.set_text('Beacon JPlot')
     ax[1].imshow(cuts, cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[dates[0], dates[-1],elongations[0] , elongations[1]],vmin=vmin,vmax=vmax)
     ax[1].title.set_text('Enhanced Beacon JPlot')
+    ax[2].imshow(cuts_interpolated, cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[dates_interpolated[0], dates_interpolated[-1],elongations_interpolated[0] , elongations_interpolated[1]],vmin=vmin_interpolated,vmax=vmax_interpolated)
+    ax[2].title.set_text('Interpolated Enhanced Beacon JPlot')
     now  = datetime.now()
     # plt.savefig(str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+".png")
     plt.savefig("latest.png")

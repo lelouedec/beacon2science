@@ -4922,7 +4922,11 @@ def hi_prep(im, hdr, post_conj, calpath, pointpath, calibrate_on=True, smask_on=
     # Calibration corrections
     if calibrate_on:
         im, hdr = hi_correction(im, hdr, post_conj, calpath, **kw_args)
-        hdr = hi_fix_pointing(hdr, pointpath, post_conj, silent=silent)
+        if(im[0].shape[0]==1024):
+            hdr = hi_fix_pointing(hdr, pointpath, post_conj, silent=silent)
+        else:
+            hi_calib_point(hdr, post_conj, 0)
+            hdr['ravg'] = -881.0
     else:
         cosmics = -1
 
