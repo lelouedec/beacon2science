@@ -11,6 +11,8 @@ from sunpy.coordinates.ephemeris import get_horizons_coord
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 from PIL import Image
+from PIL import ImageDraw 
+from PIL import ImageFont
 
 from skimage.transform import resize, rotate
 
@@ -291,7 +293,10 @@ def enhance_latest():
             enhanced.append(sr)
 
     for i in range(0,len(enhanced)):
-        img = Image.fromarray(enhanced[i]*255.0).convert("L")
+        img = Image.fromarray(np.flipud(enhanced[i])*255.0).convert("L")
+        draw = ImageDraw.Draw(img)
+        font = ImageFont.truetype("SourceSansPro-Bold.otf",35)
+        draw.text((10, 20),headers2[i]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
         img.save("tmp/"+str(i)+".png")
     
     os.system("ffmpeg -y -framerate 5 -i tmp/%d.png -pix_fmt rgb24 hi1_current.mp4")
@@ -299,7 +304,10 @@ def enhance_latest():
     os.system("rm -rf tmp/*")
 
     for i in range(0,len(diffs)):
-        img = Image.fromarray(diffs[i]*255.0).convert("L")
+        img = Image.fromarray(np.flipud(diffs[i])*255.0).convert("L")
+        draw = ImageDraw.Draw(img)
+        font = ImageFont.truetype("SourceSansPro-Bold.otf",17)
+        draw.text((10, 20),headers2[i]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
         img.save("tmp/"+str(i)+".png")
     
     os.system("ffmpeg -y -framerate 5 -i tmp/%d.png -pix_fmt rgb24 hi1_beacon_current.mp4")

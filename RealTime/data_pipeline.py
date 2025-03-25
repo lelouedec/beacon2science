@@ -225,56 +225,59 @@ def create_l2(d,type="beacon",typeset="forecast",returned=False,bgtype="median")
         data_background+=dat
         header_background+=hea
 
-    w,h = data_background[0].shape
-    for i in range(len(data_background)):
-        nan_mask = np.isnan(data_background[i])
-        data_background[i][nan_mask] = np.array(np.interp(np.flatnonzero(nan_mask), np.flatnonzero(~nan_mask), data_background[i][~nan_mask]))
-        data_background[i] = skimage.transform.resize(data_background[i],(w,h),preserve_range=True)
-    data_background = np.array(data_background)
+    if(len(data_background)>0):
+        w,h = data_background[0].shape
+        for i in range(len(data_background)):
+            nan_mask = np.isnan(data_background[i])
+            data_background[i][nan_mask] = np.array(np.interp(np.flatnonzero(nan_mask), np.flatnonzero(~nan_mask), data_background[i][~nan_mask]))
+            data_background[i] = skimage.transform.resize(data_background[i],(w,h),preserve_range=True)
+        data_background = np.array(data_background)
+    
 
-    if(bgtype=="median"):
-        background = np.median(data_background,axis=0)
-    else:
-        background = np.percentile(data_background,5,0)
-  
-    ##### load the data files and their headers and remove background from the data
-    prefix=str(d.strftime('%Y'))+str(d.strftime('%m'))+str(d.strftime('%d'))
-    files_list = natsorted(glob.glob(path_reduced+typeset+'/'+prefix+"/"+type+"/*"))
-    datas   = []
-    headers = []
-    for f in files_list:
-        filea = fits.open(f)
-        datas.append(filea[0].data.copy()-skimage.transform.resize(background,filea[0].data.shape,preserve_range=True))
-        headers.append(filea[0].header)
-        filea.close()
 
-    ### get last image from previous day and prepend it to the new L2 directory 
-    dat1 = d-timedelta(days=1)
-    prefix=str(dat1.strftime('%Y'))+str(dat1.strftime('%m'))+str(dat1.strftime('%d'))
-    files_list = natsorted(glob.glob(path_reduced+typeset+'/'+prefix+"/"+type+"/*"))
-    if(len(files_list)>0):
-        files_list = files_list[-1]
-        filea = fits.open(files_list)
-        datas = [filea[0].data.copy()-background.copy()] + datas
-        headers= [filea[0].header] + headers
-        filea.close()
-        
-    for j in range(0,len(datas)):
-        name = headers[j]["DATE-END"]
-        name = name.replace(":","-")
+        if(bgtype=="median"):
+            background = np.median(data_background,axis=0)
+        else:
+            background = np.percentile(data_background,5,0)
+    
+        ##### load the data files and their headers and remove background from the data
         prefix=str(d.strftime('%Y'))+str(d.strftime('%m'))+str(d.strftime('%d'))
-        path = path_to_save+typeset+"/"+type+"/"+prefix+"/"
-        try:
-            if not os.path.exists(path):
-                os.makedirs(path)
-        except:
-            print("folder existed no creating it again ")
-        if(returned==False):
-            fits.writeto(path+name+".fts", np.float32(datas[j]), headers[j], output_verify='silentfix', overwrite=True)
-    if(returned == False):
-        return 
-    else:
-        return datas,headers 
+        files_list = natsorted(glob.glob(path_reduced+typeset+'/'+prefix+"/"+type+"/*"))
+        datas   = []
+        headers = []
+        for f in files_list:
+            filea = fits.open(f)
+            datas.append(filea[0].data.copy()-skimage.transform.resize(background,filea[0].data.shape,preserve_range=True))
+            headers.append(filea[0].header)
+            filea.close()
+
+        ### get last image from previous day and prepend it to the new L2 directory 
+        dat1 = d-timedelta(days=1)
+        prefix=str(dat1.strftime('%Y'))+str(dat1.strftime('%m'))+str(dat1.strftime('%d'))
+        files_list = natsorted(glob.glob(path_reduced+typeset+'/'+prefix+"/"+type+"/*"))
+        if(len(files_list)>0):
+            files_list = files_list[-1]
+            filea = fits.open(files_list)
+            datas = [filea[0].data.copy()-background.copy()] + datas
+            headers= [filea[0].header] + headers
+            filea.close()
+            
+        for j in range(0,len(datas)):
+            name = headers[j]["DATE-END"]
+            name = name.replace(":","-")
+            prefix=str(d.strftime('%Y'))+str(d.strftime('%m'))+str(d.strftime('%d'))
+            path = path_to_save+typeset+"/"+type+"/"+prefix+"/"
+            try:
+                if not os.path.exists(path):
+                    os.makedirs(path)
+            except:
+                print("folder existed no creating it again ")
+            if(returned==False):
+                fits.writeto(path+name+".fts", np.float32(datas[j]), headers[j], output_verify='silentfix', overwrite=True)
+        if(returned == False):
+            return 
+        else:
+            return datas,headers 
     
 
 def run_all():
