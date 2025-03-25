@@ -1,321 +1,301 @@
 import torch
-from ESRGAN import *
-import torch
-
-import numpy as np
-from PIL import Image
+import numpy as np 
 import torchvision
 torchvision.disable_beta_transforms_warning()
-import FILM
-
-
-from natsort import natsorted
+from natsort import natsorted 
 import glob 
-import cv2
 from datetime import datetime,timedelta
-import matplotlib.pyplot as plt 
-import os 
-from astropy.io import fits
-from scipy.ndimage import shift, median_filter
-from astropy.wcs import WCS
 
-import warnings
-from astropy.utils.exceptions import AstropyWarning
-warnings.simplefilter('ignore', category=AstropyWarning)
-from matplotlib.ticker import MultipleLocator
-import matplotlib.dates as mdates
+import matplotlib
+
+matplotlib.rcParams.update({'font.size': 20})
+
+from skimage.metrics import structural_similarity as ssim
+from skimage.metrics import peak_signal_noise_ratio as PSNR
+from skimage.metrics import mean_squared_error as MSE
+from skimage.transform import resize
+import pickle
+
+
+
+
+from skimage.transform import resize
 from skimage import exposure
 
 
-
-def difference(img,img_prev,header,header_prev,ratio1,ratio2,center):
-
-    wcs = WCS(header,key='A')
-    center_prev = wcs.all_world2pix(header_prev["crval1a"],header_prev["crval2a"], 0)
-    shift_arr = np.array([center_prev[1]-center[1],center_prev[0]-center[0]])*ratio1/ratio2
-    difference   = np.float32(img-shift(img_prev,shift_arr, mode='nearest',prefilter=False)) 
-
-    return cv2.medianBlur(difference ,5)
+import tqdm
 
 
-
-def insert_cut(dates,dtime,diff,cuts,mid,pix):
-    for i,d in enumerate(dates):
-        if(np.abs((d-dtime).total_seconds())/60<60.0):
-            img_rescale_hs = diff[mid-pix:mid+pix,:].T
-            cuts[:,i,:]= img_rescale_hs
-            break
-    return cuts
+import warnings
+warnings.filterwarnings('ignore', category=UserWarning, append=True)
 
 
 
 
+import models.RIFE as RIFE
 
-
-events_selected = [ 
-                    # "03/09/2009",
-                    # "03/04/2010",
-                    # "08/04/2010",
-                    # "23/05/2010",
-                    # "16/06/2010",
-                    # "01/08/2010",
-                    # "15/12/2010",
-                    # "30/01/2011",
-                    # "14/02/2011",
-                    # "23/06/2011",
-                    # "02/08/2011",
-                    # "06/09/2011",
-                    # "22/10/2011",
-                    # "12/07/2012",
-                    # "15/01/2013",
-                    # "30/09/2013",
-                    # "15/04/2020",
-                    # "23/06/2020",
-                    # "09/07/2020",
-                    # "20/07/2020",
-                    # "30/09/2020",
-                    # "26/10/2020",
-                    # "07/12/2020",
-                    # "11/02/2021",
-                    # "20/02/2021",
-                    # "10/04/2021",
-                    # "22/04/2021",
-                    # "09/05/2021",
-                    # "29/05/2021",
-                    # "23/08/2021",
-                    # "13/09/2021",
-                    # "09/10/2021",
-                    "04/04/2022",
-                    "11/04/2022",
-                    "27/06/2022",
-                    "03/07/2022",
-                    "03/11/2022",
-                    "31/12/2022",
-                    "16/04/2023",
-                    "21/04/2023"
-                ]
-
-new_events_list = []
-for i in range(0,len(events_selected)):
-    date = datetime.strptime(events_selected[i],'%d/%m/%Y')
-    dates = [
-             datetime.strptime(events_selected[i],'%d/%m/%Y')-timedelta(days=3),
-             datetime.strptime(events_selected[i],'%d/%m/%Y')-timedelta(days=2),
-             datetime.strptime(events_selected[i],'%d/%m/%Y')-timedelta(days=1),
-             datetime.strptime(events_selected[i],'%d/%m/%Y'),
-             datetime.strptime(events_selected[i],'%d/%m/%Y')+timedelta(days=1),
-             datetime.strptime(events_selected[i],'%d/%m/%Y')+timedelta(days=2),
-             datetime.strptime(events_selected[i],'%d/%m/%Y')+timedelta(days=3)
-             ]
-    new_events_list.append(dates)
-
-
-
-def test():
-    device = torch.device("cpu")
-    if(torch.backends.mps.is_available()):
-        device = torch.device("mps")
-    elif(torch.cuda.is_available()):
-        device = torch.device("cuda")
-
+def normalize(img,rangev=2.5):
     
-    print("THIS WILL RUN ON DEVICE:", device)
+    vmax = np.median(img)+rangev*np.std(img)
+    vmin = np.median(img)-rangev*np.std(img)
 
-    # sudo rmmod nvidia_uvm
-    # sudo modprobe nvidia_uvm
+    img[img>vmax] = vmax
+    img[img<vmin] = vmin
+
+    img = (img-vmin)/( (vmax-vmin))
+
+    img[img>1.0] = 1.0
+    return img
+
+def create_dates_test():
+    Test_events_selected = [ 
+                        "30/08/2008",
+                        "18/12/2008",
+                        "09/01/2009",
+                        "22/01/2009",
+                        "31/01/2009",
+                        "09/05/2009",
+                        "16/06/2009",
+                        "23/06/2009",
+                        "18/10/2009",
+                        "22/12/2009",
+                        "08/04/2010",
+                        "19/04/2010",
+                        "08/05/2010",
+                        "16/06/2010",
+                        "21/06/2010",
+                        "01/08/2010",
+                        "07/10/2010",
+                        "24/11/2010",
+                        "23/12/2010",
+                        "20/01/2011",
+                        "30/01/2011",
+                        "14/02/2011",
+                        "25/03/2011",
+                        "04/04/2011",
+                        "04/08/2011",
+                        "07/09/2011",
+                        "27/10/2011",
+                        "12/07/2012",
+                        "12/03/2019",
+                        "21/03/2019",
+                        "11/05/2019",
+                        "22/05/2019",
+                        "09/07/2020",
+                        "30/09/2020",
+                        "10/10/2020",
+                        "07/12/2020",
+                        "08/12/2020",
+                        "11/02/2021",
+                        "20/02/2021",
+                        "25/04/2021",
+                        "09/06/2021",
+                        "24/11/2021",
+                        "10/03/2022",
+                        "28/03/2022",
+                        "09/04/2022",
+                        "02/06/2022",
+                        "13/06/2022",
+                        "27/06/2022",
+                    ]
+
+    new_events_list = []
+    event_lists = []
+    for i in range(0,len(Test_events_selected)):
+        date = datetime.strptime(Test_events_selected[i],'%d/%m/%Y')
+        dates = [
+                date-timedelta(days=3),
+                date-timedelta(days=2),
+                date-timedelta(days=1),
+                date,
+                date+timedelta(days=1),
+                date+timedelta(days=2),
+                date+timedelta(days=3)
+                ]
+        event_lists.append(dates)
+        for d in range(0,len(dates)):
+            found = False
+            for e in new_events_list:
+                if(e==d):
+                    found = True
+            if (found==False):
+                new_events_list.append(dates[d])
+    return new_events_list,event_lists
 
 
-    model = FILM.Interpolator()
-    model.load_state_dict(torch.load("FILM_saved.pth",map_location=torch.device('cpu')))
 
-    model.to(device).eval()
-    # model2.to(device).eval()
+def load_final_enhanced(dates,folder = "E-beacon"):
+    imgs_list    = []
+    imgs_headers = []
+    imgs_times = []
+    for e in dates:
+        prefix=str(e.strftime('%Y'))+"-"+str(e.strftime('%m'))+"-"+str(e.strftime('%d'))
+        imgs = natsorted(glob.glob("/media/lelouedec/DATA/"+folder+"/"+prefix+"*"))
+        for im in imgs:
+            with open(im, 'rb') as f:
+                jplot_dict = pickle.load(f)
+                imgs_list.append(jplot_dict['data'])
+                imgs_headers.append(jplot_dict['header'])
+                time = datetime.strptime(im.split("/")[-1][:-3], '%Y-%m-%dT%H-%M-%S')
+                imgs_times.append(time)
 
-
-    dt1 = torch.ones((1)).to(device) * 0.25
-    dt2 = torch.ones((1)).to(device) * 0.75
-    cadence = 40
-    slice_shape = 16
-
-
-    imgs_paths = natsorted(glob.glob("../res_model_final3/*"))
-    index_event = 0
-    jplots = []
-
-    date1 = new_events_list[index_event][0]
-    date2 = new_events_list[index_event][-1] + timedelta(hours=24)
-    dates = []
-    current_date = date1
-    while current_date <= date2:
-        dates.append(current_date)
-        current_date = current_date + timedelta(minutes=cadence)
-    dates.append(date2)
-
-    cuts = np.zeros((512,len(dates),slice_shape))
+    return imgs_list,imgs_headers,imgs_times
 
 
+
+device = torch.device("cpu")
+if(torch.backends.mps.is_available()):
+    device = torch.device("mps")
+elif(torch.cuda.is_available()):
+    device = torch.device("cuda:1")
+
+model = RIFE.Model()
+model.flownet.to(device)
+
+model.load_model("PAPER_NN2.pth")
+
+_,new_events_list = create_dates_test()
+for i in range(0,len(new_events_list)):
+    e = new_events_list[i]
+    if(e[0].year<2015):
+        origin = 'upper'
+    else:
+        origin = 'lower'
+
+    differences,headers,times = load_final_enhanced(e)
+    differences2 = []
+    headers2 = []
 
     with torch.no_grad():
-        for p in range(1,len(imgs_paths)-1):
+        for p in tqdm.tqdm(range(0,len(differences)-1,1)):
+            
 
-            time1 = datetime.strptime(imgs_paths[p-1].split("/")[-1][:-8], '%Y-%m-%dT%H-%M-%S')
-            time2 = datetime.strptime(imgs_paths[p].split("/")[-1][:-8], '%Y-%m-%dT%H-%M-%S')
+            time1 = times[p]
+            time2 = times[p+1]
             diff_time = (time2-time1).total_seconds()
-            
-            if(diff_time/3600<3 and time1 > new_events_list[index_event][0]):
 
-                S1 = torch.tensor(np.asarray(Image.open(imgs_paths[p-1]).convert("L"))/255.0).float().unsqueeze(0).unsqueeze(1).to(device)
-                S2 = torch.tensor(np.asarray(Image.open(imgs_paths[p]).convert("L"))/255.0).float().unsqueeze(0).unsqueeze(1).to(device)
-            
-                output1 = model(S1,S2,dt1.unsqueeze(1))[0,0,:,:].cpu().numpy()
-                output2 = model(S1,S2,dt2.unsqueeze(1))[0,0,:,:].cpu().numpy()
+            if(diff_time/3600<=4.0):
+                
+                data1 = differences[p]
+                data2 = differences[p+1]
+                
 
-                S1 = S1[0,0,:,:].cpu().numpy()
-                S2 = S2[0,0,:,:].cpu().numpy()
+                if(time1.year<=2015):
+                    data1 = np.fliplr(data1)
+                    data2 = np.fliplr(data2)
+
+                S1 = torch.tensor(data1.copy()).float().unsqueeze(0).unsqueeze(1).to(device)
+                S2 = torch.tensor(data2.copy()).float().unsqueeze(0).unsqueeze(1).to(device)
+
+
+                output1 = model.inference(S1,S2,timestep=torch.tensor([0.33]))
+                output2 = model.inference(S1,S2,timestep=torch.tensor([0.66]))
+        
+
+                output1 = output1[0,0,:,:].cpu().numpy()
+                output2 = output2[0,0,:,:].cpu().numpy()
+
+                header1 = headers[p]
+                header2 = headers[p+1]
+
+                hdr3 = header2.copy()
+                hdr4 = header2.copy()
 
                 timeout1 = time1+timedelta(minutes=40)
                 timeout2 = time1+timedelta(minutes=80)
-
-
-                # name1    = str(timeout1.year) +"-"+ '%02d' %timeout1.month +"-"+'%02d' % timeout1.day+"T"+'%02d' %timeout1.hour+"-"+'%02d' % timeout1.minute+"-"+'%02d' %timeout1.second+".000"
-                # name2    = str(timeout2.year) +"-"+ '%02d' %timeout2.month +"-"+'%02d' % timeout2.day+"T"+'%02d' %timeout2.hour+"-"+'%02d' % timeout2.minute+"-"+'%02d' %timeout2.second+".000"
-
-
-                # time_str1    = str(timeout1.year) +"-"+ '%02d' %timeout1.month +"-"+'%02d' % timeout1.day+"T"+'%02d' %timeout1.hour+":"+'%02d' % timeout1.minute+":"+'%02d' %timeout1.second+".000"
-                # time_str2    = str(timeout2.year) +"-"+ '%02d' %timeout2.month +"-"+'%02d' % timeout2.day+"T"+'%02d' %timeout2.hour+":"+'%02d' % timeout2.minute+":"+'%02d' %timeout2.second+".000"
                 
-                name = '../test_fits/'+imgs_paths[p-1].split("/")[-1][:-3]+"fts"
-                filea = fits.open(name)
-                hdr = filea[0].header
-                filea.close()
+                hdr3["DATE-END"] = timeout1.strftime('%Y-%m-%dT%H:%M:%S')+".000"
+                hdr4["DATE-END"] = timeout2.strftime('%Y-%m-%dT%H:%M:%S')+".000"
 
-                name = '../test_fits/'+imgs_paths[p].split("/")[-1][:-3]+"fts"
-                filea = fits.open(name)
-                hdr2= filea[0].header
-                filea.close()
-                
-                
-                # diff1 = difference(output1,S1,hdr2,hdr,2,3,(126.5,126.5))
-                # diff2 = difference(output2,output1,hdr2,hdr,2,3,(126.5,126.5))
-                # diff3 = difference(S2,output2,hdr2,hdr,2,3,(126.5,126.5))
+                output1 = exposure.match_histograms(output1, data1)
+                output2 = exposure.match_histograms(output2, data1)
 
+                if(time1.year<=2015):
+                    data1 = np.fliplr(data1)
+                    data2 = np.fliplr(data2)
+                    output1 = np.fliplr(output1)
+                    output2 = np.fliplr(output2)
+
+              
 
 
-                # cuts = insert_cut(dates,timeout1,diff1,cuts,256,32)
-                # cuts = insert_cut(dates,timeout2,diff2,cuts,256,32)
-                # cuts = insert_cut(dates,time2,diff3,cuts,256,32)
+                to_save = {'data': data1,
+                          'header':header1
+                        }
+                pickle.dump(to_save, open("/media/lelouedec/DATA/IE-beacon/"+time1.strftime("%Y-%m-%dT%H-%M-%S").replace(":","-")+".p", 'wb'))
 
-                diff = difference(S2,S1,hdr2,hdr,2,1,(126.5,126.5))
-                cuts = insert_cut(dates,time2,diff,cuts,256,slice_shape//2)
+                to_save = {'data': output1,
+                          'header':hdr3
+                        }
+                pickle.dump(to_save, open("/media/lelouedec/DATA/IE-beacon/"+timeout1.strftime("%Y-%m-%dT%H-%M-%S").replace(":","-")+".p", 'wb'))
 
+                to_save = {'data': output2,
+                          'header':hdr4
+                        }
+                pickle.dump(to_save, open("/media/lelouedec/DATA/IE-beacon/"+timeout2.strftime("%Y-%m-%dT%H-%M-%S").replace(":","-")+".p", 'wb'))
 
-                # fig,ax = plt.subplots(1,3)
-                # ax[0].imshow(diff1)
-                # ax[1].imshow(diff2)
-                # ax[2].imshow(diff3)
-                # plt.savefig("testdiffs.png")
-
-            if(time2>new_events_list[index_event][-1]):
-                print("END of day",time2)
-                cuts = cuts.reshape((cuts.shape[0],cuts.shape[1]*cuts.shape[2])) #np.nanmedian(cuts,2)
-                print(cuts.shape)
-                p2, p98 = np.nanpercentile(cuts, (5, 98))
-                cuts = exposure.rescale_intensity(cuts, in_range=(p2, p98))
-
-                vmin_h1 = np.nanmedian(cuts) - 2 * np.nanstd(cuts)
-                vmax_h1 = np.nanmedian(cuts) + 2 * np.nanstd(cuts)
+                to_save = {'data': data2,
+                          'header':header2
+                        }
+                pickle.dump(to_save, open("/media/lelouedec/DATA/IE-beacon/"+time2.strftime("%Y-%m-%dT%H-%M-%S").replace(":","-")+".p", 'wb'))
+            
 
 
-                # cuts = (cuts - vmin_h1)/(vmax_h1-vmin_h1)
-                # cuts = (cuts - cuts.min())/(cuts.max()-cuts.min())
-
-                # img = Image.fromarray((cuts*255).astype(np.uint8))
-                # img.save("results_plots/res_jplot"+new_events_list[index_event][3].strftime("%Y-%m-%d").replace(":","-")+".png")
                
-                fig,ax = plt.subplots(1,1)
-                ax.imshow(cuts,
-                           aspect="auto",
-                           origin='lower',
-                           interpolation='none',
-                           extent = [dates[0],dates[-1],4,24],
-                           cmap='afmhot',
-                           vmin=vmin_h1,
-                           vmax=vmax_h1)
-                ax.set_xlim([dates[30],dates[150]])
-             
-                plt.savefig("results_plots/res_jplot"+new_events_list[index_event][3].strftime("%Y-%m-%d").replace(":","-")+".png")
-                index_event+=1
-                date1 = new_events_list[index_event][0]
-                date2 = new_events_list[index_event][-1] + timedelta(hours=24)
-                dates = []
-                current_date = date1
-                while current_date <= date2:
-                    dates.append(current_date)
-                    current_date = current_date + timedelta(minutes=cadence)
-                dates.append(date2)
-                cuts = np.zeros((512,len(dates),slice_shape))
-                exit()
-                
+            
+
+imgs_paths = natsorted(glob.glob("/media/lelouedec/DATA/IE-beacon/*"))
+
+PSNR_enhanced = []
+MSE_enhanced = []
+SSIM_enhanced = []
+magnitudes_enhanced= []
+contrast = 5
+with torch.no_grad():
+    for p in tqdm.tqdm(range(0,len(imgs_paths),1)):
+              
+            with open(imgs_paths[p], 'rb') as f:
+                jplot_dict = pickle.load(f)
+                enhanced = jplot_dict['data']
+                hdr = jplot_dict['header']
+
+            if(len(glob.glob("/media/lelouedec/DATA/rdifs_science_120/"+imgs_paths[p].split("/")[-1][:-4]+"*")) ==1 and  len(glob.glob("/media/lelouedec/DATA/E-beacon/"+imgs_paths[p].split("/")[-1][:-4]+"*"))==0 ):
+                science_path = glob.glob("/media/lelouedec/DATA/rdifs_science_120/"+imgs_paths[p].split("/")[-1][:-4]+"*")[0]
+                with open(science_path, 'rb') as f:
+                    jplot_dict = pickle.load(f)
+                    sciencerdif = resize(normalize(jplot_dict['data']),(512,512),preserve_range=True)
+
+                f_transform = np.fft.fft2(enhanced)
+                f_transform_shifted = np.fft.fftshift(f_transform)  # Shift zero frequency to center
+                magnitude_spectrum_enhanced = np.log1p(np.abs(f_transform_shifted))
+
+                magnitudes_enhanced.append(magnitude_spectrum_enhanced)
 
 
-
-        #         ## move img input to fits file with correct header
-        #         name = '../test_fits/'+imgs_paths[p].split("/")[-1][:-3]+"fts"
-        
-
-        #         filea = fits.open('../test_fits/'+imgs_paths[p+1].split("/")[-1][:-3]+"fts")
-        #         hdr2 = filea[0].header
-        #         filea.close()
-
-        #         hdr1_2 = hdr.copy()
-        #         hdr2_2 = hdr.copy()
-
-        #         print( hdr["crval1a"],hdr["crval2a"],hdr["DATE-END"])
-        #         crval1 = hdr["crval1a"] + (hdr2["crval1a"] - hdr["crval1a"])*0.33
-        #         crval2 = hdr["crval2a"] + (hdr2["crval2a"] - hdr["crval2a"])*0.33
-        #         hdr1_2["crval1a"] = crval1
-        #         hdr1_2["crval2a"] = crval2
-        #         hdr1_2["DATE-END"] = time1
-        #         print(crval1,crval2,time1)
-
-
-        #         crval1 = hdr["crval1a"] + (hdr2["crval1a"] - hdr["crval1a"])*0.66
-        #         crval2 = hdr["crval2a"] + (hdr2["crval2a"] - hdr["crval2a"])*0.66
-        #         hdr2_2["crval1a"] = crval1
-        #         hdr2_2["crval2a"] = crval2
-        #         hdr2_2["DATE-END"] = time2
-
-        #         print(crval1,crval2,time2)
-        #         print( hdr2["crval1a"],hdr2["crval2a"],hdr2["DATE-END"])
-        #         # exit()
-                
-        #         fits.writeto("../enhanced_fits2/"+name1+".fts", output1.astype(np.float32), hdr1_2, output_verify='silentfix', overwrite=True)
-        #         fits.writeto("../enhanced_fits2/"+name2+".fts", output2.astype(np.float32), hdr2_2, output_verify='silentfix', overwrite=True)
-
-        #     else:
-        #         name = '../test_fits/'+imgs_paths[p].split("/")[-1][:-3]+"fts"
-        #         filea = fits.open(name)
-        #         hdr = filea[0].header
-        #         fits.writeto("../enhanced_fits2/"+imgs_paths[p].split("/")[-1][:-3]+"fts", np.asarray(Image.open(imgs_paths[p]).convert("L"))/255.0, hdr, output_verify='silentfix', overwrite=True)
-        #         filea.close()
-
-
-        # name = '../test_fits/'+imgs_paths[p+1].split("/")[-1][:-3]+"fts"
-        # filea = fits.open(name)
-        # hdr = filea[0].header
-        # fits.writeto("../enhanced_fits2/"+imgs_paths[p+1].split("/")[-1][:-3]+"fts", np.asarray(Image.open(imgs_paths[p+1]).convert("L"))/255.0, hdr, output_verify='silentfix', overwrite=True)
-        # filea.close()
-
+                intercept    = -(0.5 * contrast) + 0.5
+                enhanced           = contrast * enhanced  + intercept
+                sciencerdif  = contrast * sciencerdif + intercept
            
+                sciencerdif = np.where(sciencerdif > 1,1,sciencerdif)
+                sciencerdif = np.where(sciencerdif < 0,0,sciencerdif)
+
+                enhanced = np.where(enhanced > 1,1,enhanced)
+                enhanced = np.where(enhanced < 0,0,enhanced)
 
 
-        
 
 
+                psnr_enhanced,mse_enhanced   = PSNR(sciencerdif,enhanced,data_range=enhanced.max()-enhanced.min()),MSE(sciencerdif,enhanced)    
 
+                PSNR_enhanced.append(psnr_enhanced)
+                MSE_enhanced.append(mse_enhanced)
+                
+                ssim_enhanced,imgssime   = ssim(sciencerdif,enhanced,full=True,gaussian_weights=True,data_range=enhanced.max()-enhanced.min())
+                SSIM_enhanced.append(ssim_enhanced)
 
-
-if __name__ == "__main__":
-    test()
-
-
+print(np.array(PSNR_enhanced).mean())
+print(np.array(MSE_enhanced).mean())
+print(np.array(SSIM_enhanced).mean())
+np.save("/media/lelouedec/DATA/magnitude_interpolated.npy",np.array(magnitudes_enhanced))
+            
+              

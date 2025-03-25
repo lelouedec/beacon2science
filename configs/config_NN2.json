@@ -1,0 +1,11 @@
+{
+    "minibatch":10,
+    "diffloss":false,
+    "full_size":512,
+    "model_name":"rife.pth",
+    "model_name2":"rife.pth",
+    "restart":false,
+    "lr":1e-5,
+    "logdir":"runs/rife",
+    "data_path":"/Volumes/Data_drive/L2_data/"
+}
