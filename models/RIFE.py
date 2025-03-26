@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 import torchvision.models as models
-from kornia.geometry.transform import translate
+# from kornia.geometry.transform import translate
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
