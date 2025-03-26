@@ -407,7 +407,7 @@ class Model:
                 if "module." in k
             }
         
-        self.flownet.load_state_dict(torch.load(path))
+        self.flownet.load_state_dict(torch.load(path),map_location=torch.device('cpu'))
         
         
 
