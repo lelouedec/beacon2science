@@ -29,6 +29,7 @@ import models.RIFE as RIFE
 
 import functions
 import os 
+import pickle
 
 def normalize(img,rangev=2.5):      
     vmax = np.median(img)+rangev*np.std(img)
