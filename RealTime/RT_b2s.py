@@ -442,7 +442,7 @@ def enhance_latest():
 
 
     fig,ax = plt.subplots(3,1,figsize=(20,10))
-    ax[0].imshow(cuts_beacon.astype(np.float32), cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[np.datetime64(dates_beacon[0]), np.datetime64(dates_beacon[-1]) ,elongations_beacon[0] , elongations_beacon[1]],vmin=vmin_beacon,vmax=vmax_beacon)
+    ax[0].imshow(cuts_beacon.astype(np.float32), cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[np.datetime64(dates_beacon[0]), np.datetime64(dates_beacon[-1]) ,elongations_beacon[0].astype(np.float32) , elongations_beacon[1].astype(np.float32)],vmin=vmin_beacon.astype(np.float32),vmax=vmax_beacon.astype(np.float32))
     ax[0].title.set_text('Beacon JPlot')
     ax[1].imshow(cuts.astype(np.float32), cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[np.datetime64(dates[0]), np.datetime64(dates[-1]),elongations[0] , elongations[1]],vmin=vmin,vmax=vmax)
     ax[1].title.set_text('Enhanced Beacon JPlot')
