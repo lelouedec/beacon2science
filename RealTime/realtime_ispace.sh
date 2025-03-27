@@ -17,7 +17,7 @@ unset __conda_setup
 
 
 
-conda activate 
+conda activate CME_toolkit
 
 cd /export/home/aswo/jlelouedec/Desktop/beacon2science/RealTime/
 
