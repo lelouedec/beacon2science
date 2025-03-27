@@ -562,7 +562,8 @@ def enhance_latest():
     # plt.figtext(0.05,0.00, "Le Louëdec, Justin et al., 2025", fontsize=8, va="top", ha="left")
     ax[1].text(0.00,-0.20, 'Le Louëdec, Justin et al., 2025',  color='black', fontsize=15, style='italic', horizontalalignment='left',verticalalignment='top', transform=ax[1].transAxes)
     # plt.subplots_adjust(bottom=0.01, right=0.8, top=0.9)
-    plt.savefig("latest.png")
+    plt.savefig("/permp/aswo/jlelouedec/hi/latest.png")
+    plt.savefig("/permp/aswo/jlelouedec/hi/"+str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+".png")
 
 
         

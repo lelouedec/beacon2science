@@ -26,7 +26,7 @@ import skimage
 
 
 
-datapath = "WunderbarDataset"
+datapath = "/scratch/aswo/jlelouedec/WunderbarDataset"
 
 
 def listfd(input_url, extension):
@@ -152,7 +152,7 @@ def multiprocessing_reduction(i):
         data_red,clean_headers = reduce_data(hduls,datas,headers,global_type)
         if(data_red is not None and clean_headers is not None):
             for d in range(0,len(data_red)):
-                path = "./Reduced/"+global_typeset+"/"+clean_headers[d]["DATE-END"][:10].replace("-","")+"/"+global_type
+                path = "/scratch/aswo/jlelouedec/Reduced/"+global_typeset+"/"+clean_headers[d]["DATE-END"][:10].replace("-","")+"/"+global_type
                 if not os.path.exists(path):
                     os.makedirs(path)
                 fits.writeto(path+"/"+clean_headers[d]["DATE-END"].replace(":","")+".fts", data_red[d].astype(np.float32), clean_headers[d], output_verify='silentfix', overwrite=True)
@@ -210,8 +210,8 @@ def get_fits_date(date,path_reduced,typeset,type):
 
 def create_l2(d,type="beacon",typeset="forecast",returned=False,bgtype="median"):
   
-    path_reduced = "./Reduced/"
-    path_to_save = "./L2_data/"
+    path_reduced = "/scratch/aswo/jlelouedec/Reduced/"
+    path_to_save = "/scratch/aswo/jlelouedec/L2_data/"
 
     d = datetime.strptime(d,'%Y%m%d')
     print("processing date ", d)
