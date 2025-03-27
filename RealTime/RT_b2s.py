@@ -389,6 +389,8 @@ def enhance_latest():
             'elongations':elongations_beacon
     }
     pickle.dump(dict_beacon, open("latest_jplot_beacon.p", "wb"))  # save it into a file named save.p
+    pickle.dump(dict_beacon, open("/perm/aswo/jlelouedec/beacon2science/"+str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+"_jplot_beacon.p", "wb"))  # save it into a file named save.p
+    pickle.dump(dict_beacon, open("/perm/aswo/jlelouedec/beacon2science/latest_jplot_beacon.p", "wb"))  # save it into a file named save.p
 
 
     cuts_beacon,vmin_beacon,vmax_beacon,elongations_beacon = processjplot(cuts_beacon,dates_beacon,elongations_beacon,False)
@@ -540,6 +542,8 @@ def enhance_latest():
             'elongations':elongations_interpolated
     }
     pickle.dump(dict_interpolated, open("latest_jplot_enhance.p", "wb"))  # save it into a file named save.p
+    pickle.dump(dict_interpolated, open("/perm/aswo/jlelouedec/beacon2science/"+str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+"_jplot_interpolated.p", "wb"))  # save it into a file named save.p
+    pickle.dump(dict_interpolated, open("/perm/aswo/jlelouedec/beacon2science/latest_jplot_interpolated.p", "wb"))  # save it into a file named save.p
 
     cuts_interpolated,vmin_interpolated,vmax_interpolated,elongations_interpolated = processjplot(cuts_interpolated,dates_interpolated,elongations_interpolated,False)
     
