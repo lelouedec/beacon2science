@@ -31,6 +31,8 @@ import functions
 import os 
 import pickle
 
+plt.rcParams.update({'font.size': 20})
+
 def normalize(img,rangev=2.5):      
     vmax = np.median(img)+rangev*np.std(img)
     vmin = np.median(img)-rangev*np.std(img)
@@ -148,7 +150,7 @@ def ecliptic_cut(data, header, ftpsc, post_conj, datetime_data, datetime_series)
 
 
 
-
+contrast = 2.5
 
 def create_jplot_from_differences(differences,headers,cadence=120):
     
@@ -159,6 +161,16 @@ def create_jplot_from_differences(differences,headers,cadence=120):
         postconj= True
     else:
         postconj = False
+
+
+    for i in range(0,len(differences)):
+        dif = normalize(differences[i],2.5)
+        intercept = -(0.5 * contrast) + 0.5
+        dif   = contrast * dif  + intercept
+
+        dif = np.where(dif > 1,1,dif)
+        dif = np.where(dif < 0,0,dif)
+        differences[i] = dif
 
 
     datetime_data = [datetime.strptime(t['DATE-END'], '%Y-%m-%dT%H:%M:%S.%f') for t in headers]
@@ -179,6 +191,17 @@ def create_enhanced_jplots(differences,headers,cadence=120):
     else:
         postconj = False
 
+    for i in range(0,len(differences)):
+        dif = differences[i]
+        
+        intercept = -(0.5 * contrast) + 0.5
+        dif   = contrast * dif  + intercept
+
+        dif = np.where(dif > 1,1,dif)
+        dif = np.where(dif < 0,0,dif)
+        differences[i] = dif
+
+
 
     datetime_data = [datetime.strptime(t['DATE-END'], '%Y-%m-%dT%H:%M:%S.%f') for t in headers]
     datetime_series = np.arange(np.min(datetime_data), np.max(datetime_data) + timedelta(minutes=cadence), timedelta(minutes=cadence)).astype(datetime)
@@ -189,19 +212,80 @@ def create_enhanced_jplots(differences,headers,cadence=120):
    
     return cuts,datetime_series,elongations
 
+def resistant_mean(inputData, Cut=3.0, axis=None, dtype=None):
+    """
+    Robust estimator of the mean of a data set.  Based on the
+    resistant_mean function from the AstroIDL User's Library.
+
+    .. versionchanged:: 1.0.3
+        Added the 'axis' and 'dtype' keywords to make this function more
+        compatible with numpy.mean()
+    """
+    epsilon = 1.0e-20
+    if axis is not None:
+        fnc = lambda x: resistant_mean(x, dtype=dtype)
+        dataMean = np.apply_along_axis(fnc, axis, inputData)
+    else:
+        data = inputData.ravel()
+        if type(data).__name__ == "MaskedArray":
+            data = data.compressed()
+        if dtype is not None:
+            data = data.astype(dtype)
+
+        data0 = np.nanmedian(data)
+        maxAbsDev = np.nanmedian(np.abs(data - data0)) / 0.6745
+        if maxAbsDev < epsilon:
+            maxAbsDev = np.nanmean(np.abs(data - data0)) / 0.8000
+
+        cutOff = Cut * maxAbsDev
+        good = np.where(np.abs(data - data0) <= cutOff)
+        good = good[0]
+        dataMean = np.nanmean(data[good])
+        dataSigma = np.sqrt(np.nansum((data[good] - dataMean) ** 2.0) / len(good))
+
+        if Cut > 1.0:
+            sigmaCut = Cut
+        else:
+            sigmaCut = 1.0
+        if sigmaCut <= 4.5:
+            dataSigma = dataSigma / (
+            -0.15405 + 0.90723 * sigmaCut - 0.23584 * sigmaCut ** 2.0 + 0.020142 * sigmaCut ** 3.0)
+
+        cutOff = Cut * dataSigma
+        good = np.where(np.abs(data - data0) <= cutOff)
+        good = good[0]
+        dataMean = np.nanmean(data[good])
+        if len(good) > 3:
+            dataSigma = np.sqrt(np.nansum((data[good] - dataMean) ** 2.0) / len(good))
+
+        if Cut > 1.0:
+            sigmaCut = Cut
+        else:
+            sigmaCut = 1.0
+        if sigmaCut <= 4.5:
+            dataSigma = dataSigma / (
+            -0.15405 + 0.90723 * sigmaCut - 0.23584 * sigmaCut ** 2.0 + 0.020142 * sigmaCut ** 3.0)
+
+        dataSigma = dataSigma / np.sqrt(len(good) - 1)
+
+    return dataMean
+
 
 def processjplot(cuts,dates,elongations,medianed=False):
-    if(medianed):
-        cuts = np.median(cuts,2)
-    else:
-        a,b,c = cuts.shape
-        cuts  = cuts.reshape((a,b*c))
+    # if(medianed):
+    # cuts = np.median(cuts,2)
+    cuts = resistant_mean(cuts,axis=2)
+    # else:
+        # a,b,c = cuts.shape
+        # cuts  = cuts.reshape((a,b*c))
     
-    p2, p98 = np.nanpercentile(cuts, (2, 98))
-    cuts = exposure.rescale_intensity(cuts, in_range=(p2, p98))
+    # p2, p98 = np.nanpercentile(cuts, (2, 98))
+    # cuts = exposure.rescale_intensity(cuts, in_range=(p2, p98))
+
+
     cuts = np.where(np.isnan(cuts), np.nanmedian(cuts), cuts)
-    vmin = np.nanmedian(cuts) - 2 *  np.nanstd(cuts)
-    vmax = np.nanmedian(cuts) + 2 *  np.nanstd(cuts)
+    vmin = np.nanmedian(cuts) - 2.7 *  np.nanstd(cuts)
+    vmax = np.nanmedian(cuts) + 3.0 *  np.nanstd(cuts)
 
     elongations = np.asarray(elongations)
     elongations = [np.nanmin(elongations), np.nanmax(elongations)]
@@ -274,14 +358,20 @@ def enhance_latest():
             nonprocesseddiffs.append(diff.copy())
 
             diff = normalize(diff)
-            # diff = exposure.equalize_adapthist(diff,clip_limit=0.02,kernel_size=diff.shape[0]//10)
 
             diffs.append(diff)
             headers2.append(hdr2)
             times.append(time2)
 
     for i in range(0,len(diffs)):
-        img = Image.fromarray(np.flipud(diffs[i])*255.0).convert("L")
+        dif = diffs[i]
+        intercept = -(0.5 * contrast) + 0.5
+        dif   = contrast * dif  + intercept
+
+        dif = np.where(dif > 1,1,dif)
+        dif = np.where(dif < 0,0,dif)
+
+        img = Image.fromarray(np.flipud(dif)*255.0).convert("L")
         draw = ImageDraw.Draw(img)
         font = ImageFont.truetype("SourceSansPro-Bold.otf",17)
         draw.text((10, 20),headers2[i]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
@@ -325,7 +415,15 @@ def enhance_latest():
             enhanced.append(sr)
 
     for i in range(0,len(enhanced)):
-        img = Image.fromarray(np.flipud(enhanced[i])*255.0).convert("L")
+        dif = enhanced[i]
+        intercept = -(0.5 * contrast) + 0.5
+        dif   = contrast * dif  + intercept
+
+        dif = np.where(dif > 1,1,dif)
+        dif = np.where(dif < 0,0,dif)
+
+        img = Image.fromarray(np.flipud(dif)*255.0).convert("L")
+
         draw = ImageDraw.Draw(img)
         font = ImageFont.truetype("SourceSansPro-Bold.otf",35)
         draw.text((10, 20),headers2[i]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
@@ -412,9 +510,20 @@ def enhance_latest():
                 interpolated_rdifs = interpolated_rdifs + [data1,output1,output2]
                 interpolated_headers = interpolated_headers + [header1,hdr3,hdr4]
 
+    interpolated_rdifs = interpolated_rdifs + [enhanced[p+1]]
+    interpolated_headers = interpolated_headers + [headers2[p+1]]
+
 
     for i in range(0,len(interpolated_rdifs)):
-        img = Image.fromarray(np.flipud(interpolated_rdifs[i])*255.0).convert("L")
+        dif = interpolated_rdifs[i]
+        intercept = -(0.5 * contrast) + 0.5
+        dif   = contrast * dif  + intercept
+
+        dif = np.where(dif > 1,1,dif)
+        dif = np.where(dif < 0,0,dif)
+
+        img = Image.fromarray(np.flipud(dif)*255.0).convert("L")
+
         draw = ImageDraw.Draw(img)
         font = ImageFont.truetype("SourceSansPro-Bold.otf",35)
         draw.text((10, 20),interpolated_headers[i]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
@@ -441,15 +550,18 @@ def enhance_latest():
 
 
 
-    fig,ax = plt.subplots(3,1,figsize=(20,10))
+    fig,ax = plt.subplots(2,1,figsize=(20,10))
     ax[0].imshow(cuts_beacon.astype(np.float32), cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[np.datetime64(dates_beacon[0]), np.datetime64(dates_beacon[-1]) ,elongations_beacon[0].astype(np.float32) , elongations_beacon[1].astype(np.float32)],vmin=vmin_beacon.astype(np.float32),vmax=vmax_beacon.astype(np.float32))
     ax[0].title.set_text('Beacon JPlot')
-    ax[1].imshow(cuts.astype(np.float32), cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[np.datetime64(dates[0]), np.datetime64(dates[-1]),elongations[0] , elongations[1]],vmin=vmin,vmax=vmax)
-    ax[1].title.set_text('Enhanced Beacon JPlot')
-    ax[2].imshow(cuts_interpolated.astype(np.float32), cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[np.datetime64(dates_interpolated[0]), np.datetime64(dates_interpolated[-1]),elongations_interpolated[0] , elongations_interpolated[1]],vmin=vmin_interpolated,vmax=vmax_interpolated)
-    ax[2].title.set_text('Interpolated Enhanced Beacon JPlot')
+    # ax[1].imshow(cuts.astype(np.float32), cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[np.datetime64(dates[0]), np.datetime64(dates[-1]),elongations[0] , elongations[1]],vmin=vmin,vmax=vmax)
+    # ax[1].title.set_text('Enhanced Beacon JPlot')
+    ax[1].imshow(cuts_interpolated.astype(np.float32), cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[np.datetime64(dates_interpolated[0]), np.datetime64(dates_interpolated[-1]),elongations_interpolated[0] , elongations_interpolated[1]],vmin=vmin_interpolated,vmax=vmax_interpolated)
+    ax[1].title.set_text('Interpolated Enhanced Beacon JPlot')
     now  = datetime.now()
     # plt.savefig(str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+".png")
+    # plt.figtext(0.05,0.00, "Le Louëdec, Justin et al., 2025", fontsize=8, va="top", ha="left")
+    ax[1].text(0.00,-0.20, 'Le Louëdec, Justin et al., 2025',  color='black', fontsize=15, style='italic', horizontalalignment='left',verticalalignment='top', transform=ax[1].transAxes)
+    # plt.subplots_adjust(bottom=0.01, right=0.8, top=0.9)
     plt.savefig("latest.png")
 
 
