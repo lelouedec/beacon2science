@@ -302,6 +302,8 @@ def enhance_latest():
     elif(torch.cuda.is_available()):
         device = torch.device("cuda:0")
 
+    now  = datetime.now()
+
 
 
 
@@ -561,7 +563,7 @@ def enhance_latest():
     # ax[1].title.set_text('Enhanced Beacon JPlot')
     ax[1].imshow(cuts_interpolated.astype(np.float32), cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[np.datetime64(dates_interpolated[0]), np.datetime64(dates_interpolated[-1]),elongations_interpolated[0] , elongations_interpolated[1]],vmin=vmin_interpolated,vmax=vmax_interpolated)
     ax[1].title.set_text('Interpolated Enhanced Beacon JPlot')
-    now  = datetime.now()
+    
     # plt.savefig(str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+".png")
     # plt.figtext(0.05,0.00, "Le Louëdec, Justin et al., 2025", fontsize=8, va="top", ha="left")
     ax[1].text(0.00,-0.20, 'Le Louëdec, Justin et al., 2025',  color='black', fontsize=15, style='italic', horizontalalignment='left',verticalalignment='top', transform=ax[1].transAxes)
