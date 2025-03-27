@@ -16,9 +16,10 @@ unset __conda_setup
 # <<< conda initialize <<<
 
 
+source /export/home/aswo/jlelouedec/.bashrc 
 
 conda activate CME_toolkit
 
-cd /export/home/aswo/jlelouedec/Desktop/beacon2science/RealTime/
+cd /export/home/aswo/jlelouedec/beacon2science/RealTime/
 
 python RT_b2s.py
