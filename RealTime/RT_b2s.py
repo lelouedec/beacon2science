@@ -150,7 +150,7 @@ def ecliptic_cut(data, header, ftpsc, post_conj, datetime_data, datetime_series)
 
 
 
-contrast = 2.5
+contrast = 4.0
 
 def create_jplot_from_differences(differences,headers,cadence=120):
     
@@ -365,34 +365,16 @@ def enhance_latest():
             headers2.append(hdr2)
             times.append(time2)
 
-    for i in range(0,len(diffs)):
-        dif = diffs[i]
-        intercept = -(0.5 * contrast) + 0.5
-        dif   = contrast * dif  + intercept
-
-        dif = np.where(dif > 1,1,dif)
-        dif = np.where(dif < 0,0,dif)
-
-        img = Image.fromarray(np.flipud(dif)*255.0).convert("L")
-        draw = ImageDraw.Draw(img)
-        font = ImageFont.truetype("SourceSansPro-Bold.otf",17)
-        draw.text((10, 20),headers2[i]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
-        img.save("tmp/"+str(i)+".png")
     
-    os.system("ffmpeg -y -framerate 5 -i tmp/%d.png -pix_fmt rgb24 hi1_beacon_current.mp4")
-    os.system("rm -rf tmp/*")
-
-
-
     cuts_beacon,dates_beacon,elongations_beacon = create_jplot_from_differences(nonprocesseddiffs,headers2,120)
-    dict_beacon = {
-            'data':cuts_beacon,
-            'dates':dates_beacon,
-            'elongations':elongations_beacon
-    }
-    pickle.dump(dict_beacon, open("latest_jplot_beacon.p", "wb"))  # save it into a file named save.p
-    pickle.dump(dict_beacon, open("/perm/aswo/jlelouedec/beacon2science/"+str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+"_jplot_beacon.p", "wb"))  # save it into a file named save.p
-    pickle.dump(dict_beacon, open("/perm/aswo/jlelouedec/beacon2science/latest_jplot_beacon.p", "wb"))  # save it into a file named save.p
+    # dict_beacon = {
+    #         'data':cuts_beacon,
+    #         'dates':dates_beacon,
+    #         'elongations':elongations_beacon
+    # }
+    # pickle.dump(dict_beacon, open("latest_jplot_beacon.p", "wb"))  # save it into a file named save.p
+    # pickle.dump(dict_beacon, open("/perm/aswo/jlelouedec/beacon2science/"+str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+"_jplot_beacon.p", "wb"))  # save it into a file named save.p
+    # pickle.dump(dict_beacon, open("/perm/aswo/jlelouedec/beacon2science/latest_jplot_beacon.p", "wb"))  # save it into a file named save.p
 
 
     cuts_beacon,vmin_beacon,vmax_beacon,elongations_beacon = processjplot(cuts_beacon,dates_beacon,elongations_beacon,False)
@@ -418,32 +400,16 @@ def enhance_latest():
 
             enhanced.append(sr)
 
-    for i in range(0,len(enhanced)):
-        dif = enhanced[i]
-        intercept = -(0.5 * contrast) + 0.5
-        dif   = contrast * dif  + intercept
-
-        dif = np.where(dif > 1,1,dif)
-        dif = np.where(dif < 0,0,dif)
-
-        img = Image.fromarray(np.flipud(dif)*255.0).convert("L")
-
-        draw = ImageDraw.Draw(img)
-        font = ImageFont.truetype("SourceSansPro-Bold.otf",35)
-        draw.text((10, 20),headers2[i]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
-        img.save("tmp/"+str(i)+".png")
     
-    os.system("ffmpeg -y -framerate 5 -i tmp/%d.png -pix_fmt rgb24 hi1_current.mp4")
-    os.system("rm -rf tmp/*")
 
 
     cuts,dates,elongations = create_enhanced_jplots(enhanced,headers2,120)
-    dict_enhanced = {
-            'data':cuts,
-            'dates':dates,
-            'elongations':elongations
-    }
-    pickle.dump(dict_enhanced, open("latest_jplot_enhance.p", "wb"))  # save it into a file named save.p
+    # dict_enhanced = {
+    #         'data':cuts,
+    #         'dates':dates,
+    #         'elongations':elongations
+    # }
+    # pickle.dump(dict_enhanced, open("latest_jplot_enhance.p", "wb"))  # save it into a file named save.p
 
     cuts,vmin,vmax,elongations = processjplot(cuts,dates,elongations,False)
 
@@ -513,27 +479,90 @@ def enhance_latest():
 
                 interpolated_rdifs = interpolated_rdifs + [data1,output1,output2]
                 interpolated_headers = interpolated_headers + [header1,hdr3,hdr4]
+            else:
+                interpolated_rdifs = interpolated_rdifs + [enhanced[p]]
+                interpolated_headers = interpolated_headers + [headers2[p]]
 
     interpolated_rdifs = interpolated_rdifs + [enhanced[p+1]]
     interpolated_headers = interpolated_headers + [headers2[p+1]]
 
 
+    # for i in range(0,len(diffs)):
+    #     dif = diffs[i]
+    #     intercept = -(0.5 * contrast) + 0.5
+    #     dif   = contrast * dif  + intercept
+
+    #     dif = np.where(dif > 1,1,dif)
+    #     dif = np.where(dif < 0,0,dif)
+
+    #     img = Image.fromarray(np.flipud(dif)*255.0).convert("L")
+    #     draw = ImageDraw.Draw(img)
+    #     font = ImageFont.truetype("SourceSansPro-Bold.otf",17)
+    #     draw.text((10, 20),headers2[i]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
+    #     img.save("tmp/"+str(i)+".png")
+    
+    # os.system("ffmpeg -y -framerate 5 -i tmp/%d.png -pix_fmt rgb24 hi1_beacon_current.mp4")
+    # os.system("rm -rf tmp/*")
+
+    time1 = datetime.strptime(headers[i-1]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
+    time2 = datetime.strptime(headers[i]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
+
+
+
+    index_beacon = 0
+
+    for h in headers2:
+        print(h["DATE-END"])
+
+
     for i in range(0,len(interpolated_rdifs)):
-        dif = interpolated_rdifs[i]
+        dif        = interpolated_rdifs[i]
+        time = datetime.strptime(interpolated_headers[i]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
+        time2 = datetime.strptime(headers2[index_beacon+1]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
+        if(np.abs(time-time2).total_seconds()/60 <10.0):
+            index_beacon = index_beacon + 1
+
+        dif_beacon = diffs[index_beacon]
+        time_beacon = headers2[index_beacon]["DATE-END"]
+
+
         intercept = -(0.5 * contrast) + 0.5
         dif   = contrast * dif  + intercept
-
         dif = np.where(dif > 1,1,dif)
         dif = np.where(dif < 0,0,dif)
-
         img = Image.fromarray(np.flipud(dif)*255.0).convert("L")
+
+
+        dif_beacon   = contrast * dif_beacon  + intercept
+        dif_beacon = np.where(dif_beacon > 1,1,dif_beacon)
+        dif_beacon = np.where(dif_beacon < 0,0,dif_beacon)
+        dif_beacon = resize(dif_beacon,(512,512))
+        img_beacon = Image.fromarray(np.flipud(dif_beacon)*255.0).convert("L")
 
         draw = ImageDraw.Draw(img)
         font = ImageFont.truetype("SourceSansPro-Bold.otf",35)
         draw.text((10, 20),interpolated_headers[i]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
-        img.save("tmp/"+str(i)+".png")
+
+        draw = ImageDraw.Draw(img)
+        font = ImageFont.truetype("SourceSansPro-Bold.otf",25)
+        draw.text((10, 470),"Beacon2Science",font=font, fill=255)
+
+        draw2 = ImageDraw.Draw(img_beacon)
+        font = ImageFont.truetype("SourceSansPro-Bold.otf",35)
+        draw2.text((10, 20),headers2[index_beacon]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
+
+        draw2 = ImageDraw.Draw(img_beacon)
+        font = ImageFont.truetype("SourceSansPro-Bold.otf",25)
+        draw2.text((10, 470),"Beacon",font=font, fill=255)
+
+       
+
+        img_total = Image.fromarray(np.hstack([img_beacon,np.asarray(img)])).convert("L")
+
+
+        img_total.save("tmp/"+str(i)+".png", dpi=(1000, 1000))
     
-    os.system("ffmpeg -y -framerate 5 -i tmp/%d.png -pix_fmt rgb24 hi1_current_interpolated.mp4")
+    os.system("ffmpeg -y -framerate 10 -i tmp/%d.png -pix_fmt yuv420p -vb 20M hi1_current_interpolated.mp4")
     os.system("rm -rf tmp/*")
 
                 
@@ -544,8 +573,8 @@ def enhance_latest():
             'elongations':elongations_interpolated
     }
     pickle.dump(dict_interpolated, open("latest_jplot_enhance.p", "wb"))  # save it into a file named save.p
-    pickle.dump(dict_interpolated, open("/perm/aswo/jlelouedec/beacon2science/"+str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+"_jplot_interpolated.p", "wb"))  # save it into a file named save.p
-    pickle.dump(dict_interpolated, open("/perm/aswo/jlelouedec/beacon2science/latest_jplot_interpolated.p", "wb"))  # save it into a file named save.p
+    pickle.dump(dict_interpolated, open("/perm/aswo/ops/hi/"+str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+"_jplot_interpolated.p", "wb"))  # save it into a file named save.p
+    pickle.dump(dict_interpolated, open("/perm/aswo/ops/hi/latest_jplot_interpolated.p", "wb"))  # save it into a file named save.p
 
     cuts_interpolated,vmin_interpolated,vmax_interpolated,elongations_interpolated = processjplot(cuts_interpolated,dates_interpolated,elongations_interpolated,False)
     
@@ -568,8 +597,8 @@ def enhance_latest():
     # plt.figtext(0.05,0.00, "Le Louëdec, Justin et al., 2025", fontsize=8, va="top", ha="left")
     ax[1].text(0.00,-0.20, 'Le Louëdec, Justin et al., 2025',  color='black', fontsize=15, style='italic', horizontalalignment='left',verticalalignment='top', transform=ax[1].transAxes)
     # plt.subplots_adjust(bottom=0.01, right=0.8, top=0.9)
-    plt.savefig("/perm/aswo/jlelouedec/beacon2science/latest.png")
-    plt.savefig("/perm/aswo/jlelouedec/beacon2science/"+str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+".png")
+    plt.savefig("/perm/aswo/ops/hi/latest.png")
+    plt.savefig("/perm/aswo/ops/hi/"+str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+".png")
 
 
         
