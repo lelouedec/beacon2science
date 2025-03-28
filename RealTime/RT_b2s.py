@@ -562,8 +562,9 @@ def enhance_latest():
 
         img_total.save("tmp/"+str(i)+".png", dpi=(1000, 1000))
     
-    os.system("ffmpeg -y -framerate 10 -i tmp/%d.png -pix_fmt yuv420p -vb 20M hi1_current_interpolated.mp4")
+    os.system("ffmpeg -y -framerate 10 -i tmp/%d.png -pix_fmt yuv420p -vb 20M /perm/aswo/ops/hi/hi1_current_interpolated.mp4")
     os.system("rm -rf tmp/*")
+    os.system('ffmpeg -y -i /perm/aswo/ops/hi/hi1_current_interpolated.mp4 -filter_complex "fps=9,scale=350:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=35[p];[s1][p]paletteuse=dither=bayer" /perm/aswo/ops/hi/hi1_current_interpolated.gif')
 
                 
     cuts_interpolated,dates_interpolated,elongations_interpolated = create_enhanced_jplots(interpolated_rdifs,interpolated_headers,40)
