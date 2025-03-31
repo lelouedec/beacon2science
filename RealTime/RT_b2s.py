@@ -150,7 +150,7 @@ def ecliptic_cut(data, header, ftpsc, post_conj, datetime_data, datetime_series)
 
 
 
-contrast = 4.0
+contrast = 3.0
 
 def create_jplot_from_differences(differences,headers,cadence=120):
     
