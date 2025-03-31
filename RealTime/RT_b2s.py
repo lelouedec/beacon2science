@@ -32,6 +32,8 @@ import os
 import pickle
 
 plt.rcParams.update({'font.size': 20})
+pathl2 = "/scratch/aswo/jlelouedec/"
+# pathl2 = "./"
 
 def normalize(img,rangev=2.5):      
     vmax = np.median(img)+rangev*np.std(img)
@@ -100,7 +102,7 @@ def ecliptic_cut(data, header, ftpsc, post_conj, datetime_data, datetime_series)
         
         delta_pa = e_pa[i]
 
-        e_val = [(delta_pa)-1*np.pi/180, (delta_pa)+1*np.pi/180]
+        e_val = [(delta_pa)-3*np.pi/180, (delta_pa)+3*np.pi/180]
 
     
 
@@ -150,7 +152,8 @@ def ecliptic_cut(data, header, ftpsc, post_conj, datetime_data, datetime_series)
 
 
 
-contrast = 3.0
+contrast_beacon   = 3.0
+contrast_enhanced = 3.0
 
 def create_jplot_from_differences(differences,headers,cadence=120):
     
@@ -162,15 +165,15 @@ def create_jplot_from_differences(differences,headers,cadence=120):
     else:
         postconj = False
 
-
+    differences2 = differences.copy()
     for i in range(0,len(differences)):
-        dif = normalize(differences[i],2.5)
-        intercept = -(0.5 * contrast) + 0.5
-        dif   = contrast * dif  + intercept
+        dif = normalize(differences[i].copy(),2.5)
+        intercept = -(0.5 * contrast_beacon) + 0.5
+        dif   = contrast_beacon * dif  + intercept
 
         dif = np.where(dif > 1,1,dif)
         dif = np.where(dif < 0,0,dif)
-        differences[i] = dif
+        differences2[i] = dif
 
 
     datetime_data = [datetime.strptime(t['DATE-END'], '%Y-%m-%dT%H:%M:%S.%f') for t in headers]
@@ -191,15 +194,16 @@ def create_enhanced_jplots(differences,headers,cadence=120):
     else:
         postconj = False
 
+    differences2 = differences.copy()
     for i in range(0,len(differences)):
-        dif = differences[i]
+        dif = differences[i].copy()
         
-        intercept = -(0.5 * contrast) + 0.5
-        dif   = contrast * dif  + intercept
+        intercept = -(0.5 * contrast_enhanced) + 0.5
+        dif   = contrast_enhanced * dif  + intercept
 
         dif = np.where(dif > 1,1,dif)
         dif = np.where(dif < 0,0,dif)
-        differences[i] = dif
+        differences2[i] = dif
 
 
 
@@ -274,10 +278,10 @@ def resistant_mean(inputData, Cut=3.0, axis=None, dtype=None):
 def processjplot(cuts,dates,elongations,medianed=False):
     # if(medianed):
     # cuts = np.median(cuts,2)
-    # cuts = resistant_mean(cuts,axis=2)
+    cuts = resistant_mean(cuts,axis=2)
     # else:
-    a,b,c = cuts.shape
-    cuts  = cuts.reshape((a,b*c))
+    # a,b,c = cuts.shape
+    # cuts  = cuts.reshape((a,b*c))
     
     # p2, p98 = np.nanpercentile(cuts, (2, 98))
     # cuts = exposure.rescale_intensity(cuts, in_range=(p2, p98))
@@ -314,7 +318,7 @@ def enhance_latest():
     datas   = []
     headers = []
     for d in dates:
-        path = "/scratch/aswo/jlelouedec/L2_data/"+typeset+"/"+type+"/"+d+"/*"
+        path = pathl2+"L2_data/"+typeset+"/"+type+"/"+d+"/*"
         files = natsorted(glob.glob(path))
         for f in files:
             filea  = fits.open(f)
@@ -402,6 +406,21 @@ def enhance_latest():
             enhanced.append(sr)
 
     
+    # for i in range(0,len(enhanced)):
+    #     dif = enhanced[i]
+    #     dif_beacon = diffs[i]
+    #     dif = np.flipud(dif)
+    #     dif_beacon = np.flipud(resize(dif_beacon,(512,512)))
+
+    #     img = Image.fromarray(np.hstack([dif_beacon,dif])*255.0).convert("L")
+
+
+    #     draw = ImageDraw.Draw(img)
+    #     font = ImageFont.truetype("SourceSansPro-Bold.otf",17)
+    #     draw.text((10, 20),headers2[i]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
+    #     img.save("tmp/"+str(i)+".png")
+
+    # exit()
 
 
     cuts,dates,elongations = create_enhanced_jplots(enhanced,headers2,120)
@@ -439,9 +458,9 @@ def enhance_latest():
                 data1 = enhanced[p]
                 data2 = enhanced[p+1]
 
-                if(time1.year<=2015):
-                    data1 = np.fliplr(data1)
-                    data2 = np.fliplr(data2)
+                # if(time1.year<=2015):
+                #     data1 = np.fliplr(data1)
+                #     data2 = np.fliplr(data2)
 
 
                 S1 = torch.tensor(data1.copy()).float().unsqueeze(0).unsqueeze(1).to(device)
@@ -459,11 +478,11 @@ def enhance_latest():
                 output1 = exposure.match_histograms(output1, data1)
                 output2 = exposure.match_histograms(output2, data1)
 
-                if(time1.year<=2015):
-                    data1 = np.fliplr(data1)
-                    data2 = np.fliplr(data2)
-                    output1 = np.fliplr(output1)
-                    output2 = np.fliplr(output2)
+                # if(time1.year<=2015):
+                #     data1 = np.fliplr(data1)
+                #     data2 = np.fliplr(data2)
+                #     output1 = np.fliplr(output1)
+                #     output2 = np.fliplr(output2)
 
                 header1 = headers2[p]
                 header2 = headers2[p+1]
@@ -512,9 +531,18 @@ def enhance_latest():
 
     index_beacon = 0
 
-    for h in headers2:
-        print(h["DATE-END"])
+    cuts_interpolated,dates_interpolated,elongations_interpolated = create_enhanced_jplots(interpolated_rdifs,interpolated_headers,40)
+    dict_interpolated = {
+            'data':cuts_interpolated,
+            'dates':dates_interpolated,
+            'elongations':elongations_interpolated
+    }
+    pickle.dump(dict_interpolated, open("latest_jplot_enhance.p", "wb"))  # save it into a file named save.p
+    pickle.dump(dict_interpolated, open("/perm/aswo/ops/hi/"+str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+"_jplot_interpolated.p", "wb"))  # save it into a file named save.p
+    pickle.dump(dict_interpolated, open("/perm/aswo/ops/hi/latest_jplot_interpolated.p", "wb"))  # save it into a file named save.p
 
+    cuts_interpolated,vmin_interpolated,vmax_interpolated,elongations_interpolated = processjplot(cuts_interpolated,dates_interpolated,elongations_interpolated,False)
+    
 
     for i in range(0,len(interpolated_rdifs)):
         dif        = interpolated_rdifs[i]
@@ -527,14 +555,14 @@ def enhance_latest():
         time_beacon = headers2[index_beacon]["DATE-END"]
 
 
-        intercept = -(0.5 * contrast) + 0.5
-        dif   = contrast * dif  + intercept
+        intercept = -(0.5 * contrast_enhanced) + 0.5
+        dif   = contrast_enhanced * dif  + intercept
         dif = np.where(dif > 1,1,dif)
         dif = np.where(dif < 0,0,dif)
         img = Image.fromarray(np.flipud(dif)*255.0).convert("L")
 
-
-        dif_beacon   = contrast * dif_beacon  + intercept
+        ntercept     = -(0.5 * contrast_beacon) + 0.5
+        dif_beacon   = contrast_beacon * dif_beacon  + intercept
         dif_beacon = np.where(dif_beacon > 1,1,dif_beacon)
         dif_beacon = np.where(dif_beacon < 0,0,dif_beacon)
         dif_beacon = resize(dif_beacon,(512,512))
@@ -568,17 +596,6 @@ def enhance_latest():
     os.system('ffmpeg -y -i /perm/aswo/ops/hi/hi1_current_interpolated.mp4 -filter_complex "fps=9,scale=350:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=35[p];[s1][p]paletteuse=dither=bayer" /perm/aswo/ops/hi/hi1_current_interpolated.gif')
 
                 
-    cuts_interpolated,dates_interpolated,elongations_interpolated = create_enhanced_jplots(interpolated_rdifs,interpolated_headers,40)
-    dict_interpolated = {
-            'data':cuts_interpolated,
-            'dates':dates_interpolated,
-            'elongations':elongations_interpolated
-    }
-    pickle.dump(dict_interpolated, open("latest_jplot_enhance.p", "wb"))  # save it into a file named save.p
-    pickle.dump(dict_interpolated, open("/perm/aswo/ops/hi/"+str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+"_jplot_interpolated.p", "wb"))  # save it into a file named save.p
-    pickle.dump(dict_interpolated, open("/perm/aswo/ops/hi/latest_jplot_interpolated.p", "wb"))  # save it into a file named save.p
-
-    cuts_interpolated,vmin_interpolated,vmax_interpolated,elongations_interpolated = processjplot(cuts_interpolated,dates_interpolated,elongations_interpolated,False)
     
     
 
@@ -587,17 +604,17 @@ def enhance_latest():
 
 
 
-    fig,ax = plt.subplots(2,1,figsize=(20,10))
+    fig,ax = plt.subplots(3,1,figsize=(25,15))
     ax[0].imshow(cuts_beacon.astype(np.float32), cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[np.datetime64(dates_beacon[0]), np.datetime64(dates_beacon[-1]) ,elongations_beacon[0].astype(np.float32) , elongations_beacon[1].astype(np.float32)],vmin=vmin_beacon.astype(np.float32),vmax=vmax_beacon.astype(np.float32))
     ax[0].title.set_text('Beacon JPlot')
     ax[1].imshow(cuts.astype(np.float32), cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[np.datetime64(dates[0]), np.datetime64(dates[-1]),elongations[0] , elongations[1]],vmin=vmin,vmax=vmax)
     ax[1].title.set_text('Enhanced Beacon JPlot')
-    # ax[1].imshow(cuts_interpolated.astype(np.float32), cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[np.datetime64(dates_interpolated[0]), np.datetime64(dates_interpolated[-1]),elongations_interpolated[0] , elongations_interpolated[1]],vmin=vmin_interpolated,vmax=vmax_interpolated)
-    # ax[1].title.set_text('Interpolated Enhanced Beacon JPlot')
+    ax[2].imshow(cuts_interpolated.astype(np.float32), cmap='gray', aspect='auto',interpolation='none',origin='upper', extent=[np.datetime64(dates_interpolated[0]), np.datetime64(dates_interpolated[-1]),elongations_interpolated[0] , elongations_interpolated[1]],vmin=vmin_interpolated,vmax=vmax_interpolated)
+    ax[2].title.set_text('Interpolated Enhanced Beacon JPlot')
     
     # plt.savefig(str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+".png")
     # plt.figtext(0.05,0.00, "Le Louëdec, Justin et al., 2025", fontsize=8, va="top", ha="left")
-    ax[1].text(0.00,-0.20, 'Le Louëdec, Justin et al., 2025',  color='black', fontsize=15, style='italic', horizontalalignment='left',verticalalignment='top', transform=ax[1].transAxes)
+    ax[2].text(0.00,-0.20, 'Le Louëdec, Justin et al., 2025',  color='black', fontsize=15, style='italic', horizontalalignment='left',verticalalignment='top', transform=ax[1].transAxes)
     # plt.subplots_adjust(bottom=0.01, right=0.8, top=0.9)
     plt.savefig("/perm/aswo/ops/hi/latest.png")
     plt.savefig("/perm/aswo/ops/hi/"+str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+".png")
