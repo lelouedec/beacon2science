@@ -310,10 +310,11 @@ def enhance_latest():
     dates = data_pipeline.get_x_last_days(7)
     dates = dates[5:]
 
+
     datas   = []
     headers = []
     for d in dates:
-        path = "L2_data/"+typeset+"/"+type+"/"+d+"/*"
+        path = "/scratch/aswo/jlelouedec/L2_data/"+typeset+"/"+type+"/"+d+"/*"
         files = natsorted(glob.glob(path))
         for f in files:
             filea  = fits.open(f)
