@@ -274,10 +274,10 @@ def resistant_mean(inputData, Cut=3.0, axis=None, dtype=None):
 def processjplot(cuts,dates,elongations,medianed=False):
     # if(medianed):
     # cuts = np.median(cuts,2)
-    cuts = resistant_mean(cuts,axis=2)
+    # cuts = resistant_mean(cuts,axis=2)
     # else:
-        # a,b,c = cuts.shape
-        # cuts  = cuts.reshape((a,b*c))
+    a,b,c = cuts.shape
+    cuts  = cuts.reshape((a,b*c))
     
     # p2, p98 = np.nanpercentile(cuts, (2, 98))
     # cuts = exposure.rescale_intensity(cuts, in_range=(p2, p98))
