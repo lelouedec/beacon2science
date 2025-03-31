@@ -74,8 +74,11 @@ global_dates   = []
 def multi_processes_dl(i):
     newpath = datapath+"/"+global_test+"/"+global_urls1[i][0].split("_")[0]+"/"+global_type+"/"
 
-    if not os.path.exists(newpath):
-        os.makedirs(newpath)
+    try:
+        if not os.path.exists(newpath):
+            os.makedirs(newpath)
+    except:
+        print("folder already created")
 
     if not os.path.isfile(newpath+global_urls1[i][0]):
         print(newpath+global_urls1[i][0])
@@ -102,7 +105,7 @@ def Download(date,data_type,set_type="test"):
         url1 = 'https://stereo-ssc.nascom.nasa.gov/pub/ins_data/secchi/L0/a/img/hi_1/' + str(date)
         urls1 = listfd(url1, 's4h1A.fts')
 
-    newpath = "./"+datapath+"/"+set_type+"/"+str(date)+"/"+data_type+"/"
+    newpath = datapath+"/"+set_type+"/"+str(date)+"/"+data_type+"/"
     if not os.path.exists(newpath):
         os.makedirs(newpath)
    
