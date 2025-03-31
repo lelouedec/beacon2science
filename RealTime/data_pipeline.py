@@ -72,7 +72,7 @@ global_dates   = []
 
 
 def multi_processes_dl(i):
-    newpath = "./"+datapath+"/"+global_test+"/"+global_urls1[i][0].split("_")[0]+"/"+global_type+"/"
+    newpath = datapath+"/"+global_test+"/"+global_urls1[i][0].split("_")[0]+"/"+global_type+"/"
 
     if not os.path.exists(newpath):
         os.makedirs(newpath)
@@ -282,7 +282,7 @@ def create_l2(d,type="beacon",typeset="forecast",returned=False,bgtype="median")
 
 def run_all():
      #### Define days you want to download + add 5 days for background
-    dates = ["20240505","20240506","20240507","20240508","20240509","20240510"]
+    # dates = ["20240505","20240506","20240507","20240508","20240509","20240510"]
     #### or get last x days
     dates = get_x_last_days(7)
 
