@@ -30,10 +30,18 @@ import models.RIFE as RIFE
 import functions
 import os 
 import pickle
+import socket 
+
+
 
 plt.rcParams.update({'font.size': 20})
-pathl2 = "/scratch/aswo/jlelouedec/"
-# pathl2 = "./"
+
+if(socket.gethostname()!='Arnold' and socket.gethostname()!="Justins.local"):
+    pathl2 = "/scratch/aswo/jlelouedec/"
+    pathjplot = "/scratch/aswo/jlelouedec/jplots/"
+else:
+    pathl2 = "./"
+    pathjplot = "./jplots/"
 
 def normalize(img,rangev=2.5):      
     vmax = np.median(img)+rangev*np.std(img)
@@ -372,12 +380,12 @@ def enhance_latest():
 
     
     cuts_beacon,dates_beacon,elongations_beacon = create_jplot_from_differences(nonprocesseddiffs,headers2,120)
-    # dict_beacon = {
-    #         'data':cuts_beacon,
-    #         'dates':dates_beacon,
-    #         'elongations':elongations_beacon
-    # }
-    # pickle.dump(dict_beacon, open("latest_jplot_beacon.p", "wb"))  # save it into a file named save.p
+    dict_beacon = {
+            'data':cuts_beacon,
+            'dates':dates_beacon,
+            'elongations':elongations_beacon
+    }
+    pickle.dump(dict_beacon, open(pathjplot+"latest_jplot_beacon.p", "wb"))  # save it into a file named save.p
     # pickle.dump(dict_beacon, open("/perm/aswo/jlelouedec/beacon2science/"+str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+"_jplot_beacon.p", "wb"))  # save it into a file named save.p
     # pickle.dump(dict_beacon, open("/perm/aswo/jlelouedec/beacon2science/latest_jplot_beacon.p", "wb"))  # save it into a file named save.p
 
@@ -424,12 +432,12 @@ def enhance_latest():
 
 
     cuts,dates,elongations = create_enhanced_jplots(enhanced,headers2,120)
-    # dict_enhanced = {
-    #         'data':cuts,
-    #         'dates':dates,
-    #         'elongations':elongations
-    # }
-    # pickle.dump(dict_enhanced, open("latest_jplot_enhance.p", "wb"))  # save it into a file named save.p
+    dict_enhanced = {
+            'data':cuts,
+            'dates':dates,
+            'elongations':elongations
+    }
+    pickle.dump(dict_enhanced, open(pathjplot+"latest_jplot_enhanced.p", "wb"))  # save it into a file named save.p
 
     cuts,vmin,vmax,elongations = processjplot(cuts,dates,elongations,False)
 
