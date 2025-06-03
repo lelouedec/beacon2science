@@ -12,6 +12,9 @@ In each folder, the functions.py is an adapted version of the code found in http
 The different train and test .py files enable reproducing the paper's results from scratch once the data is processed and saved.
 For training for example: python trainNN1.py configs/config_NN1.json
 
+We provide the dataset files list in dataset_train_final.json for NN1 and sequences_dataset.json for NN2. 
+
+
 ### Realtime
 
 To execute the code in real-time, we provide scripts and functions to process data, launch models, and generate the required plots in the RealTime folder. The models can be downloaded from the figshare link found in the paper. 
