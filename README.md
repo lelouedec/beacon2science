@@ -10,6 +10,7 @@ In each folder, the functions.py is an adapted version of the code found in http
 
 ###  Training and testing
 The different train and test .py files enable reproducing the paper's results from scratch once the data is processed and saved.
+For training for example: python trainNN1.py configs/config_NN1.json
 
 ### Realtime
 
