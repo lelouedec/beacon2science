@@ -1,3 +1,9 @@
+
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.15584109.svg)](https://doi.org/10.5281/zenodo.15584109)
+
+
+
 # Beacon2Science: Enhancing STEREO/HI beacon data with machine learning for efficient CME tracking
 
 
