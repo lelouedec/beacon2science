@@ -1,7 +1,7 @@
 # Beacon2Science: Enhancing STEREO/HI beacon data with machine learning for efficient CME tracking
 
 
-Code for the different components of the "Beacon2Science" pipeline. 
+Code for the different components of the "Beacon2Science" pipeline. A copy of the python packages used to produce this paper results can be found in requirements.txt
 
 ### Data
 
