@@ -17,7 +17,7 @@ We provide the dataset files list in dataset_train_final.json for NN1 and sequen
 
 ### Realtime
 
-To execute the code in real-time, we provide scripts and functions to process data, launch models, and generate the required plots in the RealTime folder. The models can be downloaded from the figshare link found in the paper. 
+To execute the code in real-time, we provide scripts and functions to process data, launch models, and generate the required plots in the RealTime folder. The models can be downloaded from the figshare link found in the paper. Simply launch RT_b2s.py (or adapt the bash script to have a cron job do the process at regular intervals). Videos and Jplots are available at https://helioforecast.space/cme, for faster access. 
 
 ### Tracking
 
