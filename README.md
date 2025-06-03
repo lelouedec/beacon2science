@@ -3,11 +3,19 @@
 
 Code for the different components of the "Beacon2Science" pipeline. 
 
-The different train and test .py files allow for reproducing the results of the paper from scratch once the data is processed and saved.
+### Data
 
-In the Data folder, the different functions used to create the datasets can be found, with examples on how to call them in the main function of each py file. For examples on how to use the data functions, the pipeline is provided in the RealTime folder to download specific times/latest images and produce enhanced beacon images.
+In the Data folder, all the functions required to create the training and testing datasets can be found, along with the processing function to produce L1 and L2 data for STEREO HI. Some examples of how to call the reduction function are provided. Since creating the dataset is a lengthy process for science and beacon, each function should be called sequentially. 
 
-The Tracking folder provides the tracking code used for the paper for all the events tracked.
+###  Training and testing
+The different train and test .py files enable reproducing the paper's results from scratch once the data is processed and saved.
 
+### Realtime
+
+To execute the code in real-time, we provide scripts and functions to process data, launch models, and generate the required plots in the RealTime folder. The models can be downloaded from the figshare link found in the paper. 
+
+### Tracking
+
+We provide the tracking tool used in the paper for all the events in the tracking folder, but also a lighter version in the RealTime folder.
 
 
