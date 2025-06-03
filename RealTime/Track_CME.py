@@ -38,7 +38,7 @@ import csv
 import pandas as pd
 import time 
 matplotlib.rcParams.update({'font.size': 20})
-
+import data_pipeline
 
 def draw_ecliptic(dtime,diff,header,size,earth,stereo):
     wcoord = WCS(header)
@@ -113,13 +113,14 @@ def draw_ecliptic(dtime,diff,header,size,earth,stereo):
 def load_last(dates,typedata="beacon"):
     imgs = []
     headers = []
-    for e in event:
-        files_paths = natsorted(glob.glob("./rdifs/"+typedata+"/"+e.strftime("%Y-%m-%d")+"*.p"))
+    for e in dates:
+        d  = datetime.strptime(e,'%Y%m%d')
+        files_paths = natsorted(glob.glob("./rdifs/"+typedata+"/"+d.strftime("%Y-%m-%d")+"*.fts"))
         for p in files_paths:
-            with open(p, 'rb') as f:
-                jplot_dict = pickle.load(f)
-                imgs.append(jplot_dict["data"])
-                headers.append(jplot_dict["header"])
+            filea = fits.open(p)
+            imgs.append(filea[0].data)
+            headers.append(filea[0].header)
+            filea.close()
     return imgs,headers
 
 
@@ -163,26 +164,27 @@ class ImagePlotViewer(QMainWindow):
         self.image_layout = QHBoxLayout()
         self.main_layout.addLayout(self.image_layout)
         
-        events_dates,new_events_list = create_dates_test()
 
-        self.events = get_x_last_days(7)[5:]
+        self.events = data_pipeline.get_x_last_days(7)[5:]
+        print(self.events)
         
-        
-        self.type =sys.argv[2]
+        self.type =sys.argv[1]
         if (self.type=="enhanced"):
-            self.images,self.headers = load_last(self.event,"enhanced")
+            self.images,self.headers = load_last(self.events,"enhanced")
             with open("./jplots/latest_jplot_enhanced.p", 'rb') as f:
                 jplot_dict = pickle.load(f)
             self.plot_data = jplot_dict["data"]
         elif(self.type=="beacon"):
             print(("loading beacon"))
-            self.images,self.headers = load_last(self.event,"beacon")
+            self.images,self.headers = load_last(self.events,"beacon")
             with open("./jplots/latest_jplot_beacon.p", 'rb') as f:
                 jplot_dict = pickle.load(f)
             self.plot_data = jplot_dict["data"]
         else:
             print("wrong input type")
             exit()
+
+
 
 
         dates_headers = []
@@ -215,12 +217,14 @@ class ImagePlotViewer(QMainWindow):
                 
         self.dates = jplot_dict["dates"]
         self.elongations = jplot_dict["elongations"]
+        self.elongations = [np.nanmin(self.elongations ), np.nanmax(self.elongations )]
 
-        if(self.dates[0].year<2015):
+        if(self.dates[0].year<2015 or self.dates[0].year>2023):
             self.origin='upper'
         else:
             self.origin='lower'
 
+        print(self.origin)
 
         self.current_start = len(self.final_images)//2
         self.visible_images = 4
@@ -293,12 +297,12 @@ class ImagePlotViewer(QMainWindow):
         
         self.slider2 = QSlider()
         self.slider2.setMinimum(1)
-        self.slider2.setMaximum(1000)
-        self.slider2.setValue(100)
-        self.slider2.sliderPosition = 100
+        self.slider2.setMaximum(50000)
+        self.slider2.setValue(500)
+        self.slider2.sliderPosition = 500
         self.slider2.setOrientation(1)  # 1 is horizontal, 0 is vertical
         self.slider2.valueChanged.connect(self.show_value2)
-        self.contrast_std2 = 100
+        self.contrast_std2 = 500
         self.labeli = QLabel("Images Contrast")
         self.sliders_layout.addWidget(self.labeli)
         self.sliders_layout.addWidget(self.slider2)
@@ -391,7 +395,7 @@ class ImagePlotViewer(QMainWindow):
 
         disp_Data = np.nan_to_num(disp_Data,0.0)
 
-       
+        
       
         ax.imshow(disp_Data, cmap='gray', aspect='auto',interpolation='none',origin=self.origin, extent=[self.dates[0], self.dates[-1],self.elongations[0] , self.elongations[1]],vmin=self.vmin,vmax=self.vmax)
         
@@ -573,11 +577,11 @@ class ImagePlotViewer(QMainWindow):
 
         pd_data = {'TRACK_DATE':dates,'ELON':elongations,'ELON_STDD':np.zeros((len(dates))),'SC':['A' for x in range(len(elongations))]}
 
-        newpath = "jplots_pickles/Tracks/"+self.event[3].strftime("%Y-%m-%d")+"/"+sys.argv[2]
+        newpath = "jplots_pickles/Tracks/"+datetime.now().strftime("%Y-%m-%d")
         if not os.path.exists(newpath):
             os.makedirs(newpath)
         df = pd.DataFrame(pd_data, columns=['TRACK_DATE', 'ELON', 'SC', 'ELON_STDD'])
-        df.to_csv(newpath+"/"+ str(sys.argv[1])+ '.csv', index=False, date_format='%Y-%m-%dT%H:%M:%S')
+        df.to_csv(newpath+"/"+sys.argv[1]+".csv", index=False, date_format='%Y-%m-%dT%H:%M:%S')
         self.close() 
 
 if __name__ == '__main__':
