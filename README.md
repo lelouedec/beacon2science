@@ -6,6 +6,7 @@ Code for the different components of the "Beacon2Science" pipeline.
 ### Data
 
 In the Data folder, all the functions required to create the training and testing datasets can be found, along with the processing function to produce L1 and L2 data for STEREO HI. Some examples of how to call the reduction function are provided. Since creating the dataset is a lengthy process for science and beacon, each function should be called sequentially. 
+In each folder, the functions.py is an adapted version of the code found in https://github.com/maikebauer/STEREO-HI-Data-Processing , with the core functions remaining the same.
 
 ###  Training and testing
 The different train and test .py files enable reproducing the paper's results from scratch once the data is processed and saved.
