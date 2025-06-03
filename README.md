@@ -12,7 +12,7 @@ In each folder, the functions.py is an adapted version of the code found in http
 The different train and test .py files enable reproducing the paper's results from scratch once the data is processed and saved.
 For training for example: python trainNN1.py configs/config_NN1.json
 
-We provide the dataset files list in dataset_train_final.json for NN1 and sequences_dataset.json for NN2. 
+We provide the dataset files list in dataset_train_final.json for NN1 and sequence_dataset_final_rdifs.json for NN2. 
 
 
 ### Realtime
