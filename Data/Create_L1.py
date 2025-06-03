@@ -16,8 +16,8 @@ def reduce_data(hduls,data,header,bflag,instru):
 global_dates   = []
 global_type    = "science"
 global_typeset = "Train"
-pathreduced     = "/Volumes/Data_drive/Reduced_hi2/"
-instru= "hi_2"
+pathreduced     = "/Volumes/Data_drive/Reduced/"
+instru= "hi_1"
 def multiprocessing_reduction(i):
     date = global_dates[i]
     
@@ -84,4 +84,4 @@ def reduction_dates(paths,typeset,datatype):
 
 
 if __name__ == "__main__":
-    reduction_dataset("./HI2_data/Train/*","Train","science")
+    reduction_dataset("./HI1_data/Train/*","Train","science")
