@@ -23,45 +23,15 @@ from astropy.io import fits
 import functions
 from datetime import datetime,timedelta
 import skimage
-import socket
-from astropy.wcs import WCS
-from scipy.ndimage import shift
-import torch
-import sys
-sys.path.insert(0, '..')
-import models.unet2 as unet2
 
 
-if(socket.gethostname()!='Arnold' and socket.gethostname()!="Justins.local"):
-    datapath = "/scratch/aswo/jlelouedec/WunderbarDataset"
-    # datapath = "./WunderbarDataset"
-    pathreduced= "/scratch/aswo/jlelouedec/"
-    # pathreduced = "./"
-    path_to_save = "/scratch/aswo/jlelouedec/L2_data/"
-    # path_to_save = "./L2_data/"
-else:
-    datapath = "./WunderbarDataset"
-    pathreduced = "./"
-    path_to_save = "./L2_data/"
-    path_rdifs = "./rdifs/"
 
-device = torch.device("cpu")
-if(torch.backends.mps.is_available()):
-    device = torch.device("mps")
-elif(torch.cuda.is_available()):
-    device = torch.device("cuda:0")
-
-def normalize(img,rangev=2.5):      
-    vmax = np.median(img)+rangev*np.std(img)
-    vmin = np.median(img)-rangev*np.std(img)
-
-    img[img>vmax] = vmax
-    img[img<vmin] = vmin
-
-    img = (img-vmin)/(vmax-vmin)
-
-    img[img>1.0] = 1.0
-    return img
+datapath = "/scratch/aswo/jlelouedec/WunderbarDataset"
+# datapath = "./WunderbarDataset"
+pathreduced= "/scratch/aswo/jlelouedec/"
+# pathreduced = "./"
+path_to_save = "/scratch/aswo/jlelouedec/L2_data/"
+# path_to_save = "./L2_data/"
 
 
 def listfd(input_url, extension):
@@ -317,89 +287,6 @@ def create_l2(d,type="beacon",typeset="forecast",returned=False,bgtype="median")
         else:
             return datas,headers 
     
-def create_rdifs():
-    dates = get_x_last_days(7)
-    dates = dates[5:]
-
-
-    datas   = []
-    headers = []
-    for d in dates:
-        path = path_to_save+"forecast/beacon/"+d+"/*"
-        files = natsorted(glob.glob(path))
-        for f in files:
-            filea  = fits.open(f)
-            data   = filea[0].data
-            header = filea[0].header
-            filea.close()
-            datas.append(data)
-            headers.append(header)
-
-    maxgap  = -3.5
-    cadence = 120
-
-    diffs = []
-    headers2= []
-    times = []
-    for i in range(1,len(datas)-1):
-        time1 = datetime.strptime(headers[i-1]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
-        time2 = datetime.strptime(headers[i]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
-
-        if( np.abs((time2-time1).total_seconds()/60.0)<= -maxgap * cadence and np.abs((time2-time1).total_seconds()/60.0) >= (cadence-5)):
-
-            im1 = np.float32(datas[i-1])
-            nan_mask = np.isnan(im1)
-            im1[nan_mask] = np.array(np.interp(np.flatnonzero(nan_mask), np.flatnonzero(~nan_mask), im1[~nan_mask]))
-
-
-            im2 = np.float32(datas[i])
-            nan_mask = np.isnan(im2)
-            im2[nan_mask] = np.array(np.interp(np.flatnonzero(nan_mask), np.flatnonzero(~nan_mask), im2[~nan_mask]))
-
-            hdr = headers[i-1]
-            hdr2 = headers[i]
-
-
-            center = hdr2['crpix1']-1, hdr2['crpix2']-1
-            wcs = WCS(hdr2,key='A')
-            center_prev = wcs.all_world2pix(hdr["crval1a"],hdr["crval2a"], 0)
-            shift_arr = np.array([center_prev[1]-center[1],center_prev[0]-center[0]])
-            shift_arr = shift_arr
-
-
-            diff = np.float32(im2-shift(im1,shift_arr, mode='nearest'))
-
-            diffs.append(diff)
-            headers2.append(hdr2)
-            times.append(time2)
-            
-            name =hdr2["DATE-END"]
-            name = name.replace(":","-")
-            typeset = "beacon"
-            fits.writeto(path_rdifs+"/"+typeset+"/"+name+".fts", np.float32(diff), hdr2, output_verify='silentfix', overwrite=True)
-
-
-    model = unet2.ResUnet(1,full_size=512)
-    dict_gen  = torch.load("PAPERNN1.pth",map_location=torch.device('cpu'))
-    model.load_state_dict(dict_gen)
-    model.to(device)
-
-    enhanced = []
-    with torch.no_grad():
-        for j,diff in enumerate(diffs):
-
-            dif =  normalize(diff)
-            D2 = torch.tensor(dif).float().unsqueeze(0).unsqueeze(1).to(device)
-
-            sr = model(D2,None)
-            sr = sr[0,0,:,:].cpu().numpy()
-
-            name = headers2[j]["DATE-END"]
-            name = name.replace(":","-")
-            typeset = "enhanced"
-            fits.writeto(path_rdifs+"/"+typeset+"/"+name+".fts", np.float32(sr), headers2[j], output_verify='silentfix', overwrite=True)
-
-
 
 def run_all():
      #### Define days you want to download + add 5 days for background
@@ -424,9 +311,7 @@ def run_all():
                   typeset="forecast",
                   returned=False, ## in case you want to get L2 arrays returned
                   bgtype="median") ## what kind of background
-    
-    
+        
         
 if __name__ == "__main__":
    run_all()
-   create_rdifs()
