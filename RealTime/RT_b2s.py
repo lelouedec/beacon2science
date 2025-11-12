@@ -30,10 +30,25 @@ import models.RIFE as RIFE
 import functions
 import os 
 import pickle
+import matplotlib.font_manager as fm
+import PIL 
+
+
 
 plt.rcParams.update({'font.size': 20})
 pathl2 = "/scratch/aswo/jlelouedec/"
 # pathl2 = "./"
+prop = fm.FontProperties(fname='./SourceSansPro-Bold.otf')
+
+
+from skimage import morphology
+from skimage.measure import label
+# from plantcv import plantcv as pcv
+from skimage.filters import gaussian
+
+
+import strudl_models 
+
 
 def normalize(img,rangev=2.5):      
     vmax = np.median(img)+rangev*np.std(img)
@@ -296,6 +311,115 @@ def processjplot(cuts,dates,elongations,medianed=False):
 
     return cuts,vmin,vmax,elongations
 
+def fig2img(fig):
+    """Convert a Matplotlib figure to a PIL Image and return it"""
+    import io
+    buf = io.BytesIO()
+    fig.savefig(buf)
+    buf.seek(0)
+    img = Image.open(buf)
+    return img
+
+
+def apply_strudl_and_get_masks(model,datas,headers,device):
+    print("creating STRUDL masks")
+
+    datas2 = []
+    headers2 = []
+    for i in range(1,len(datas)):
+        time1 = datetime.strptime(headers[i-1]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
+        time2 = datetime.strptime(headers[i]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
+
+        datas2.append(datas[i-1])
+        headers2.append(headers[i-1])
+
+
+        if np.abs((time2-time1).total_seconds()/60.0)>140.0:
+            nb_imgs_missing = int(np.abs((time2-time1).total_seconds()/60.0)//120.0)
+            
+            for n in range(0,nb_imgs_missing):
+                datas2.append(np.zeros(datas[i-1].shape))
+                tmp_hdr = headers[i-1].copy()
+                time = datetime.strptime(tmp_hdr["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f') + timedelta(minutes=(n+1)*120.0)
+                time = time.strftime('%Y-%m-%dT%H:%M:%S')+".000"
+                tmp_hdr["DATE-END"] = time
+                headers2.append(tmp_hdr)
+
+    
+    masks = {}
+
+    with torch.no_grad():
+        model.eval()
+        for i in range(0,len(datas2)-15,1):
+            imgs = torch.tensor(datas2[i:i+16]).unsqueeze(0).unsqueeze(0).to(device).float()
+            output = model(imgs)
+            output = output.detach().cpu().numpy()[0][0]
+
+            for j in range(0,16):
+                if i+j in masks:
+                    masks[i+j] = masks[i+j]+ [output[j]]
+                else:
+                    masks[i+j] = [output[j]]
+
+    combined_masks = []
+    for i in range(0,len(datas2)):
+        masks_img = masks[i]
+        masks_img = np.array(masks_img).mean(0)
+        mask_bin = gaussian(masks_img, sigma=1)
+        mask_bin = np.where(mask_bin > 0.35, 1, 0)
+
+        combined_masks.append(mask_bin)
+
+    skeletons = []
+    for i in range(0,len(datas2)):
+        mask_bin = combined_masks[i]
+       
+        local_skel = []
+        if(mask_bin.sum()>4):
+            mask_bin = morphology.remove_small_objects(mask_bin.astype(bool), min_size=64, connectivity=2)
+            mask_bin = morphology.remove_small_holes(mask_bin.astype(bool), area_threshold=50, connectivity=2)
+            
+            mask_bin = mask_bin.astype(float)
+            
+            labeled_clusters_connected = label(mask_bin,background=0)
+            
+            
+            for c in range(1,np.unique(labeled_clusters_connected).shape[0]):
+                cluster = np.zeros((256,256))
+                cluster[labeled_clusters_connected==c] = 1
+            
+                if(cluster.sum()>100):
+                    skeleton = morphology.skeletonize(cluster.astype(np.uint8))
+                    # pruned_skeleton, _, _ = pcv.morphology.prune(skel_img=skeleton.astype(np.uint8), size=10)
+                    pruned_coordinates = np.where(skeleton == 1)
+                    local_skel.append(pruned_coordinates)
+
+
+        skeletons.append(local_skel)
+
+
+    dpi = 100
+    px = 1/plt.rcParams['figure.dpi']  # pixel in inches
+    final_imgs = []
+    for i in range(0,len(combined_masks)):
+        fig,ax = plt.subplots(1,1,figsize=(256*px,256*px))
+        ax.imshow(normalize(datas2[i],0.15),alpha=1.0,cmap="gray")
+        ax.imshow(combined_masks[i][:,:,None]*[1.0,0.2,0.3],alpha=0.35)
+        if(len(skeletons[i])>0):
+            for j in range(0,len(skeletons[i])):
+                ax.scatter(skeletons[i][j][1][::4],skeletons[i][j][0][::4],alpha=0.25,s=7,c="blue")
+        # ax.scatter(skeletons[i][1][::4],256-skeletons[i][0][::4],color="purple")
+        plt.axis("off")
+        plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
+        # plt.text(10,256-10, headers2[i]["DATE-END"].replace("T"," ")[:-7],color="white",size=17,fontproperties=prop)
+        # plt.savefig("test_fig.png",dpi=300,bbox_inches='tight',pad_inches = 0)
+        img = fig2img(fig)
+        plt.close(fig)
+        final_imgs.append(img)
+        
+    return final_imgs,datas2,headers2
+
+
 
 def enhance_latest():
     typeset= "forecast"
@@ -308,7 +432,10 @@ def enhance_latest():
 
     now  = datetime.now()
 
-
+    strudl_model = strudl_models.CNN3D_Justin(1, 1)
+    checkpoint = torch.load("STRUDL.pth", weights_only=True,map_location='cpu')
+    strudl_model.load_state_dict(checkpoint['model_state_dict'])
+    strudl_model.to(device)
 
 
     dates = data_pipeline.get_x_last_days(7)
@@ -319,6 +446,7 @@ def enhance_latest():
     headers = []
     for d in dates:
         path = pathl2+"L2_data/"+typeset+"/"+type+"/"+d+"/*"
+        print(path)
         files = natsorted(glob.glob(path))
         for f in files:
             filea  = fits.open(f)
@@ -330,6 +458,8 @@ def enhance_latest():
 
     maxgap  = -3.5
     cadence = 120
+    
+
 
     diffs = []
     nonprocesseddiffs = []
@@ -370,7 +500,12 @@ def enhance_latest():
             headers2.append(hdr2)
             times.append(time2)
 
-    
+    final_imgs,nonprocesseddiffs,headers2 = apply_strudl_and_get_masks(strudl_model,nonprocesseddiffs,headers2,device)
+
+    diffs = []
+    for i in range(0,len(nonprocesseddiffs)):
+        diffs.append(normalize(nonprocesseddiffs[i]))
+
     cuts_beacon,dates_beacon,elongations_beacon = create_jplot_from_differences(nonprocesseddiffs,headers2,120)
     # dict_beacon = {
     #         'data':cuts_beacon,
@@ -408,7 +543,7 @@ def enhance_latest():
     
     for i in range(0,len(enhanced)):
          dif = enhanced[i]
-         dif_beacon = diffs[i]
+         dif_beacon = normalize(diffs[i],2.0)
          
          
          intercept = -(0.5 * contrast_enhanced) + 0.5
@@ -433,12 +568,17 @@ def enhance_latest():
          draw = ImageDraw.Draw(img)
          font = ImageFont.truetype("SourceSansPro-Bold.otf",25)
          draw.text((10, 470),"Beacon2Science",font=font, fill=255)
+
          
          draw2 = ImageDraw.Draw(dif_beacon)
          font = ImageFont.truetype("SourceSansPro-Bold.otf",25)
          draw2.text((10, 470),"Beacon",font=font, fill=255)
-        
-         img = Image.fromarray(np.hstack([dif_beacon,img])).convert('L')
+
+         strudl_img = np.flipud(resize(np.asarray(final_imgs[i]),(512,512)))
+
+         img = Image.fromarray(np.hstack([(np.asarray(dif_beacon)[:,:,None]*[1.0,1.0,1.0]).astype(np.uint8),
+                                          (np.asarray(img)[:,:,None]*[1.0,1.0,1.0]).astype(np.uint8),
+                                          (np.asarray(strudl_img)[:,:,:3]*255).astype(np.uint8)]))
         
         
          img.save("tmp/"+str(i)+".png")
@@ -650,3 +790,5 @@ def enhance_latest():
 if __name__ == '__main__':
     data_pipeline.run_all()	
     enhance_latest()
+
+
