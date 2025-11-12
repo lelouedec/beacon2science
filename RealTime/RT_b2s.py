@@ -506,6 +506,11 @@ def enhance_latest():
     for i in range(0,len(nonprocesseddiffs)):
         diffs.append(normalize(nonprocesseddiffs[i]))
 
+    times = []
+    for i in range(0,len(headers2)):
+        times.append(datetime.strptime(headers2[i]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f'))
+
+
     cuts_beacon,dates_beacon,elongations_beacon = create_jplot_from_differences(nonprocesseddiffs,headers2,120)
     # dict_beacon = {
     #         'data':cuts_beacon,
