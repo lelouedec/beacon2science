@@ -30,18 +30,10 @@ import models.RIFE as RIFE
 import functions
 import os 
 import pickle
-import socket 
-
-
 
 plt.rcParams.update({'font.size': 20})
-
-if(socket.gethostname()!='Arnold' and socket.gethostname()!="Justins.local"):
-    pathl2 = "/scratch/aswo/jlelouedec/"
-    pathjplot = "/scratch/aswo/jlelouedec/jplots/"
-else:
-    pathl2 = "./"
-    pathjplot = "./jplots/"
+pathl2 = "/scratch/aswo/jlelouedec/"
+# pathl2 = "./"
 
 def normalize(img,rangev=2.5):      
     vmax = np.median(img)+rangev*np.std(img)
@@ -380,12 +372,12 @@ def enhance_latest():
 
     
     cuts_beacon,dates_beacon,elongations_beacon = create_jplot_from_differences(nonprocesseddiffs,headers2,120)
-    dict_beacon = {
-            'data':cuts_beacon,
-            'dates':dates_beacon,
-            'elongations':elongations_beacon
-    }
-    pickle.dump(dict_beacon, open(pathjplot+"latest_jplot_beacon.p", "wb"))  # save it into a file named save.p
+    # dict_beacon = {
+    #         'data':cuts_beacon,
+    #         'dates':dates_beacon,
+    #         'elongations':elongations_beacon
+    # }
+    # pickle.dump(dict_beacon, open("latest_jplot_beacon.p", "wb"))  # save it into a file named save.p
     # pickle.dump(dict_beacon, open("/perm/aswo/jlelouedec/beacon2science/"+str(now.year)+str('%02d' % now.month)+str('%02d' % now.day)+"_jplot_beacon.p", "wb"))  # save it into a file named save.p
     # pickle.dump(dict_beacon, open("/perm/aswo/jlelouedec/beacon2science/latest_jplot_beacon.p", "wb"))  # save it into a file named save.p
 
@@ -414,30 +406,56 @@ def enhance_latest():
             enhanced.append(sr)
 
     
-    # for i in range(0,len(enhanced)):
-    #     dif = enhanced[i]
-    #     dif_beacon = diffs[i]
-    #     dif = np.flipud(dif)
-    #     dif_beacon = np.flipud(resize(dif_beacon,(512,512)))
+    for i in range(0,len(enhanced)):
+         dif = enhanced[i]
+         dif_beacon = diffs[i]
+         
+         
+         intercept = -(0.5 * contrast_enhanced) + 0.5
+         dif   = contrast_enhanced * dif  + intercept
+         dif = np.where(dif > 1,1,dif)
+         dif = np.where(dif < 0,0,dif)
+         img = Image.fromarray(np.flipud(dif)*255.0).convert("L")
 
-    #     img = Image.fromarray(np.hstack([dif_beacon,dif])*255.0).convert("L")
+         intercept     = -(0.5 * contrast_beacon) + 0.5
+         dif_beacon   = contrast_beacon * dif_beacon  + intercept
+         dif_beacon = np.where(dif_beacon > 1,1,dif_beacon)
+         dif_beacon = np.where(dif_beacon < 0,0,dif_beacon)
+         dif_beacon = Image.fromarray(np.flipud(resize(dif_beacon,(512,512)))*255.0).convert("L")
+
+         
 
 
-    #     draw = ImageDraw.Draw(img)
-    #     font = ImageFont.truetype("SourceSansPro-Bold.otf",17)
-    #     draw.text((10, 20),headers2[i]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
-    #     img.save("tmp/"+str(i)+".png")
+         draw = ImageDraw.Draw(img)
+         font = ImageFont.truetype("SourceSansPro-Bold.otf",17)
+         draw.text((10, 20),headers2[i]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
+         
+         draw = ImageDraw.Draw(img)
+         font = ImageFont.truetype("SourceSansPro-Bold.otf",25)
+         draw.text((10, 470),"Beacon2Science",font=font, fill=255)
+         
+         draw2 = ImageDraw.Draw(dif_beacon)
+         font = ImageFont.truetype("SourceSansPro-Bold.otf",25)
+         draw2.text((10, 470),"Beacon",font=font, fill=255)
+        
+         img = Image.fromarray(np.hstack([dif_beacon,img])).convert('L')
+        
+        
+         img.save("tmp/"+str(i)+".png")
 
+    os.system("ffmpeg -y -framerate 10 -i tmp/%d.png -pix_fmt yuv420p -vb 20M /perm/aswo/ops/hi/hi1_current_interpolated.mp4")
+    os.system("rm -rf tmp/*")
+    os.system('ffmpeg -y -i /perm/aswo/ops/hi/hi1_current_interpolated.mp4 -filter_complex "fps=9,scale=350:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=35[p];[s1][p]paletteuse=dither=bayer" /perm/aswo/ops/hi/hi1_current_interpolated.gif')
     # exit()
 
 
     cuts,dates,elongations = create_enhanced_jplots(enhanced,headers2,120)
-    dict_enhanced = {
-            'data':cuts,
-            'dates':dates,
-            'elongations':elongations
-    }
-    pickle.dump(dict_enhanced, open(pathjplot+"latest_jplot_enhanced.p", "wb"))  # save it into a file named save.p
+    # dict_enhanced = {
+    #         'data':cuts,
+    #         'dates':dates,
+    #         'elongations':elongations
+    # }
+    # pickle.dump(dict_enhanced, open("latest_jplot_enhance.p", "wb"))  # save it into a file named save.p
 
     cuts,vmin,vmax,elongations = processjplot(cuts,dates,elongations,False)
 
@@ -552,56 +570,56 @@ def enhance_latest():
     cuts_interpolated,vmin_interpolated,vmax_interpolated,elongations_interpolated = processjplot(cuts_interpolated,dates_interpolated,elongations_interpolated,False)
     
 
-    for i in range(0,len(interpolated_rdifs)):
-        dif        = interpolated_rdifs[i]
-        time = datetime.strptime(interpolated_headers[i]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
-        time2 = datetime.strptime(headers2[index_beacon+1]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
-        if(np.abs(time-time2).total_seconds()/60 <10.0):
-            index_beacon = index_beacon + 1
+    #for i in range(0,len(interpolated_rdifs)):
+    #    dif        = interpolated_rdifs[i]
+    #    time = datetime.strptime(interpolated_headers[i]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
+    #    time2 = datetime.strptime(headers2[index_beacon+1]["DATE-END"],'%Y-%m-%dT%H:%M:%S.%f')
+    #    if(np.abs(time-time2).total_seconds()/60 <10.0):
+#            index_beacon = index_beacon + 1
+#
+#        dif_beacon = diffs[index_beacon]
+#        time_beacon = headers2[index_beacon]["DATE-END"]
 
-        dif_beacon = diffs[index_beacon]
-        time_beacon = headers2[index_beacon]["DATE-END"]
+#
+#        intercept = -(0.5 * contrast_enhanced) + 0.5
+#        dif   = contrast_enhanced * dif  + intercept
+ #       dif = np.where(dif > 1,1,dif)
+   #     dif = np.where(dif < 0,0,dif)
+  #      img = Image.fromarray(np.flipud(dif)*255.0).convert("L")
 
+#        ntercept     = -(0.5 * contrast_beacon) + 0.5
+#        dif_beacon   = contrast_beacon * dif_beacon  + intercept
+#        dif_beacon = np.where(dif_beacon > 1,1,dif_beacon)
+#        dif_beacon = np.where(dif_beacon < 0,0,dif_beacon)
+#        dif_beacon = resize(dif_beacon,(512,512))
+#        img_beacon = Image.fromarray(np.flipud(dif_beacon)*255.0).convert("L")
 
-        intercept = -(0.5 * contrast_enhanced) + 0.5
-        dif   = contrast_enhanced * dif  + intercept
-        dif = np.where(dif > 1,1,dif)
-        dif = np.where(dif < 0,0,dif)
-        img = Image.fromarray(np.flipud(dif)*255.0).convert("L")
+#        draw = ImageDraw.Draw(img)
+#        font = ImageFont.truetype("SourceSansPro-Bold.otf",35)
+#        draw.text((10, 20),interpolated_headers[i]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
 
-        ntercept     = -(0.5 * contrast_beacon) + 0.5
-        dif_beacon   = contrast_beacon * dif_beacon  + intercept
-        dif_beacon = np.where(dif_beacon > 1,1,dif_beacon)
-        dif_beacon = np.where(dif_beacon < 0,0,dif_beacon)
-        dif_beacon = resize(dif_beacon,(512,512))
-        img_beacon = Image.fromarray(np.flipud(dif_beacon)*255.0).convert("L")
+#        draw = ImageDraw.Draw(img)
+#        font = ImageFont.truetype("SourceSansPro-Bold.otf",25)
+#        draw.text((10, 470),"Beacon2Science",font=font, fill=255)
 
-        draw = ImageDraw.Draw(img)
-        font = ImageFont.truetype("SourceSansPro-Bold.otf",35)
-        draw.text((10, 20),interpolated_headers[i]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
+#        draw2 = ImageDraw.Draw(img_beacon)
+#        font = ImageFont.truetype("SourceSansPro-Bold.otf",35)
+#        draw2.text((10, 20),headers2[index_beacon]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
 
-        draw = ImageDraw.Draw(img)
-        font = ImageFont.truetype("SourceSansPro-Bold.otf",25)
-        draw.text((10, 470),"Beacon2Science",font=font, fill=255)
-
-        draw2 = ImageDraw.Draw(img_beacon)
-        font = ImageFont.truetype("SourceSansPro-Bold.otf",35)
-        draw2.text((10, 20),headers2[index_beacon]["DATE-END"].replace("T"," ")[:-4],font=font, fill=255)
-
-        draw2 = ImageDraw.Draw(img_beacon)
-        font = ImageFont.truetype("SourceSansPro-Bold.otf",25)
-        draw2.text((10, 470),"Beacon",font=font, fill=255)
+#        draw2 = ImageDraw.Draw(img_beacon)
+#        font = ImageFont.truetype("SourceSansPro-Bold.otf",25)
+#        draw2.text((10, 470),"Beacon",font=font, fill=255)
 
        
 
-        img_total = Image.fromarray(np.hstack([img_beacon,np.asarray(img)])).convert("L")
+#        img_total = Image.fromarray(np.hstack([img_beacon,np.asarray(img)])).convert("L")
 
 
-        img_total.save("tmp/"+str(i)+".png", dpi=(1000, 1000))
+        #img_total.save("tmp/"+str(i)+".png", dpi=(1000, 1000))
     
-    os.system("ffmpeg -y -framerate 10 -i tmp/%d.png -pix_fmt yuv420p -vb 20M /perm/aswo/ops/hi/hi1_current_interpolated.mp4")
-    os.system("rm -rf tmp/*")
-    os.system('ffmpeg -y -i /perm/aswo/ops/hi/hi1_current_interpolated.mp4 -filter_complex "fps=9,scale=350:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=35[p];[s1][p]paletteuse=dither=bayer" /perm/aswo/ops/hi/hi1_current_interpolated.gif')
+    #os.system("ffmpeg -y -framerate 10 -i tmp/%d.png -pix_fmt yuv420p -vb 20M /perm/aswo/ops/hi/hi1_current_interpolated.mp4")
+    #os.system("rm -rf tmp/*")
+    #os.system('ffmpeg -y -i /perm/aswo/ops/hi/hi1_current_interpolated.mp4 -filter_complex "fps=9,scale=350:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=35[p];[s1][p]paletteuse=dither=bayer" /perm/aswo/ops/hi/hi1_current_interpolated.gif')
 
                 
     
